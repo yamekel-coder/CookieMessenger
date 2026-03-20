@@ -2,13 +2,13 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
-const { authLimiter, validateRegistration, noLargePayload } = require('../middleware/security');
+const { authLimiter, validateRegistration } = require('../middleware/security');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 // Регистрация — rate limit + validation
-router.post('/register', authLimiter, noLargePayload, validateRegistration, async (req, res) => {
+router.post('/register', authLimiter, validateRegistration, async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
@@ -25,7 +25,7 @@ router.post('/register', authLimiter, noLargePayload, validateRegistration, asyn
 });
 
 // Вход — rate limit (10 попыток / 15 мин)
-router.post('/login', authLimiter, noLargePayload, async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password)
@@ -50,7 +50,7 @@ router.post('/login', authLimiter, noLargePayload, async (req, res) => {
   const token = jwt.sign(
     { id: user.id, username: user.username },
     JWT_SECRET,
-    { expiresIn: '7d', issuer: 'cookiemessenger' }
+    { expiresIn: '7d' }
   );
 
   res.json({

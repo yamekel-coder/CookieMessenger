@@ -39,8 +39,8 @@ setInterval(() => {
 const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 10 });
 
 // ── General API limiter ───────────────────────────────────────────────────────
-// 200 requests per minute per IP
-const apiLimiter = rateLimit({ windowMs: 60_000, max: 200 });
+// 500 requests per minute per IP (generous for single-user dev)
+const apiLimiter = rateLimit({ windowMs: 60_000, max: 500 });
 
 // ── Security headers (replaces helmet) ───────────────────────────────────────
 function securityHeaders(req, res, next) {
@@ -48,19 +48,20 @@ function securityHeaders(req, res, next) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Don't restrict camera/mic — needed for WebRTC calls
+  // res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.removeHeader('X-Powered-By');
   next();
 }
 
-// ── Input sanitizer — strips dangerous HTML/script tags ──────────────────────
+// ── Input sanitizer — strips only actual XSS vectors ─────────────────────────
 function sanitizeString(str) {
   if (typeof str !== 'string') return str;
+  // Only strip actual script injection — don't touch normal text/emoji/symbols
   return str
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, '')        // strip all HTML tags
-    .replace(/javascript:/gi, '')   // strip js: URIs
-    .replace(/on\w+\s*=/gi, '');    // strip event handlers
+    .replace(/javascript:\s*/gi, '')
+    .replace(/on(load|error|click|mouse\w+|key\w+|focus|blur|submit|change)\s*=/gi, '');
 }
 
 function sanitizeBody(req, res, next) {

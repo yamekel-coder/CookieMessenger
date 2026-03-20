@@ -39,7 +39,7 @@ function setup(server) {
 
     let userId = null;
     try {
-      const payload = jwt.verify(token, JWT_SECRET, { issuer: 'cookiemessenger' });
+      const payload = jwt.verify(token, JWT_SECRET);
       userId = payload.id;
     } catch {
       ws.close(4001, 'Unauthorized');

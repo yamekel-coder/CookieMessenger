@@ -5,13 +5,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 /**
  * Standard auth middleware — verifies JWT and checks if user is banned.
+ * NOTE: No issuer check — supports both old and new tokens.
  */
 function auth(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Нет токена' });
 
   try {
-    req.user = jwt.verify(token, JWT_SECRET, { issuer: 'cookiemessenger' });
+    // No issuer option — accepts tokens issued before security update
+    req.user = jwt.verify(token, JWT_SECRET);
   } catch (err) {
     if (err.name === 'TokenExpiredError')
       return res.status(401).json({ error: 'Токен истёк, войдите снова' });
