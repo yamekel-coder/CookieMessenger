@@ -1,17 +1,9 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const db = require('../db');
 const ws = require('../ws');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
-
-function auth(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Нет токена' });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch { res.status(401).json({ error: 'Неверный токен' }); }
-}
 
 function parseMentions(text) {
   if (!text) return [];

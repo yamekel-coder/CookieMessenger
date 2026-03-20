@@ -1,3 +1,15 @@
+// Load .env manually (no dotenv dependency needed)
+const fs = require('fs');
+const envPath = require('path').join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
+    const [key, ...val] = line.split('=');
+    if (key && key.trim() && !key.startsWith('#')) {
+      process.env[key.trim()] = val.join('=').trim();
+    }
+  });
+}
+
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
@@ -10,15 +22,34 @@ const messagesRoutes = require('./routes/messages');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const ws = require('./ws');
+const { securityHeaders, apiLimiter, sanitizeBody } = require('./middleware/security');
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// ── Security headers on every response ───────────────────────────────────────
+app.use(securityHeaders);
+
+// ── CORS — only allow our frontend ───────────────────────────────────────────
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
+
+// ── Body parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
+// ── Sanitize all incoming text fields ────────────────────────────────────────
+app.use(sanitizeBody);
+
+// ── General rate limit on all API routes ─────────────────────────────────────
+app.use('/api', apiLimiter);
+
+// ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -28,12 +59,11 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 
-// ── GIF proxy via Tenor (uses built-in https, no extra deps) ─────────────────
+// ── GIF proxy via Tenor ───────────────────────────────────────────────────────
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https') ? require('https') : require('http');
     lib.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (r) => {
-      // Follow redirects
       if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) {
         return httpsGet(r.headers.location).then(resolve).catch(reject);
       }
@@ -47,11 +77,9 @@ function httpsGet(url) {
   });
 }
 
-app.get('/api/gifs', async (req, res) => {
+app.get('/api/gifs', apiLimiter, async (req, res) => {
   try {
     const { q, limit = 24 } = req.query;
-
-    // Tenor v1 — works with anonymous key
     const key = 'LIVDSRZULELA';
     const base = 'https://api.tenor.com/v1';
     const url = q
@@ -59,8 +87,7 @@ app.get('/api/gifs', async (req, res) => {
       : `${base}/trending?key=${key}&limit=${limit}&media_filter=minimal&contentfilter=medium&locale=ru_RU`;
 
     const { status, data } = await httpsGet(url);
-
-    if (status === 200 && data.results && data.results.length > 0) {
+    if (status === 200 && data.results?.length > 0) {
       const results = data.results.map(item => ({
         id: item.id,
         title: item.title || '',
@@ -69,12 +96,20 @@ app.get('/api/gifs', async (req, res) => {
       })).filter(r => r.preview);
       return res.json({ results });
     }
-
     res.json({ results: [] });
   } catch (err) {
     console.error('GIF proxy error:', err.message);
     res.json({ results: [] });
   }
+});
+
+// ── 404 handler ───────────────────────────────────────────────────────────────
+app.use((req, res) => res.status(404).json({ error: 'Не найдено' }));
+
+// ── Global error handler ──────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('[ERROR]', err.message);
+  res.status(500).json({ error: 'Внутренняя ошибка сервера' });
 });
 
 ws.setup(server);
