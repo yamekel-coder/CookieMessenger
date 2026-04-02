@@ -86,6 +86,65 @@ npm run dev
 
 ---
 
+## Деплой на Pterodactyl
+
+### 1. Создать сервер
+
+- Egg: **Node.js** (любой стандартный)
+- Startup команда: `node index.js`
+- Запомни выданный порт (например `25565`)
+
+### 2. Собрать фронтенд локально
+
+```bash
+cd messenger/client
+npm install
+npm run build
+```
+
+### 3. Загрузить файлы через SFTP / файловый менеджер
+
+Структура на сервере должна быть такой:
+```
+/home/container/
+├── index.js
+├── db.js
+├── ws.js
+├── package.json
+├── .env
+├── middleware/
+├── routes/
+└── client/
+    └── dist/        ← собранный фронтенд
+```
+
+То есть загружаешь содержимое `messenger/server/` в корень контейнера, и папку `messenger/client/dist/` кладёшь как `client/dist/`.
+
+### 4. Настроить .env
+
+Создай файл `.env` в корне контейнера:
+
+```env
+PORT=25565
+JWT_SECRET=supersecretkey
+```
+
+Замени `25565` на свой порт из Pterodactyl.
+
+### 5. Установить зависимости
+
+В консоли Pterodactyl:
+
+```bash
+npm install
+```
+
+### 6. Запустить
+
+Нажми **Start** в панели — сервер запустится и будет доступен по адресу который выдал Pterodactyl.
+
+---
+
 ## Деплой на VDS / VPS (Ubuntu 22.04)
 
 ### 1. Подключиться к серверу
