@@ -15,9 +15,9 @@ function connect() {
 
   isConnecting = true;
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  // Use current hostname so it works on any port/host
-  const host = window.location.hostname;
-  const socket = new WebSocket(`${protocol}://${host}:3001/ws?token=${token}`);
+  // Use same host+port as the page — works for both dev (vite proxy) and prod (pterodactyl/nginx)
+  const host = window.location.host;
+  const socket = new WebSocket(`${protocol}://${host}/ws?token=${token}`);
   globalWs = socket;
 
   socket.onopen = () => {

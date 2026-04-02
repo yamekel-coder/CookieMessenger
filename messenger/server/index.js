@@ -104,7 +104,16 @@ app.get('/api/gifs', apiLimiter, async (req, res) => {
 });
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
-app.use((req, res) => res.status(404).json({ error: 'Не найдено' }));
+// Serve built frontend if dist exists (production / pterodactyl)
+const distPath = require('path').join(__dirname, '../client/dist');
+if (require('fs').existsSync(distPath)) {
+  app.use(require('express').static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(require('path').join(distPath, 'index.html'));
+  });
+} else {
+  app.use((req, res) => res.status(404).json({ error: 'Не найдено' }));
+}
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
