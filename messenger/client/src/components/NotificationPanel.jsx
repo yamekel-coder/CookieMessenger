@@ -90,7 +90,7 @@ export default forwardRef(function NotificationBell({ accent }, ref) {
     const name = notif.actor_display_name || notif.actor_username || 'Кто-то';
     const body = `${name} ${TYPE_TEXT[notif.type] || notif.type}`;
     try {
-      new Notification('CookieMessenger', { body, icon: notif.actor_avatar || undefined });
+      new Notification('RLC', { body, icon: notif.actor_avatar || undefined });
     } catch {}
   };
 

@@ -198,7 +198,7 @@ export default function Settings({ user, onUpdate, onLogout }) {
         <SettingRow
           icon={<Bell size={17} />}
           label="Обновления платформы"
-          desc="Новости и обновления CookieMessenger"
+          desc="Новости и обновления RLC"
           right={<Toggle checked={notif.notif_updates} onChange={v => saveNotif({ ...notif, notif_updates: v })} />}
         />
       </Section>
@@ -335,7 +335,7 @@ export default function Settings({ user, onUpdate, onLogout }) {
         )}
       </Section>
 
-      <p className="settings-version">CookieMessenger v0.3.0</p>
+      <p className="settings-version">RLC v1.0.0</p>
     </div>
   );
 }

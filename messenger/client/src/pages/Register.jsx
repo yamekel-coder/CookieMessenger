@@ -35,7 +35,7 @@ export default function Register() {
           <div className="auth-logo-icon">
             <MessageCircle size={22} />
           </div>
-          <span>CookieMessenger</span>
+          <span>RLC</span>
         </div>
 
         <h2 className="auth-title">Создать аккаунт</h2>

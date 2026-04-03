@@ -208,7 +208,7 @@ export default function Profile({ user, onUpdate, onLogout }) {
           <div className="sidebar-logo-icon" style={{ borderColor: accent }}>
             {user.avatar ? <img src={user.avatar} alt="avatar" /> : <User size={18} />}
           </div>
-          <span>CookieMessenger</span>
+          <span>RLC</span>
         </div>
 
         <nav className="sidebar-nav">

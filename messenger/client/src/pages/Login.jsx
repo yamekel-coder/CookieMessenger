@@ -34,7 +34,7 @@ export default function Login({ onLogin }) {
           <div className="auth-logo-icon">
             <MessageCircle size={22} />
           </div>
-          <span>CookieMessenger</span>
+          <span>RLC</span>
         </div>
 
         <h2 className="auth-title">Добро пожаловать</h2>
