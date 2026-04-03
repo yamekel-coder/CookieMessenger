@@ -65,8 +65,12 @@ router.post('/request/:userId', auth, (req, res) => {
   if (targetId === req.user.id) return res.status(400).json({ error: 'Нельзя добавить себя' });
 
   // Verify target user exists
-  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(targetId);
+  const target = db.prepare('SELECT id, privacy_who_can_add FROM users WHERE id = ?').get(targetId);
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
+
+  // Check privacy
+  if (target.privacy_who_can_add === 'nobody')
+    return res.status(403).json({ error: 'Этот пользователь не принимает заявки в друзья' });
 
   const existing = friendStatus(req.user.id, targetId);
   if (existing) return res.status(400).json({ error: 'Заявка уже существует' });
