@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, ArrowLeft, MessageSquare, Image, Video, X, Phone, Video as VideoIcon, Smile } from 'lucide-react';
+import { Send, ArrowLeft, MessageSquare, Image, Video, X, Phone, Video as VideoIcon, Smile, Search } from 'lucide-react';
 import EmojiPicker from '../components/EmojiPicker';
 
 function api(path, opts = {}) {
