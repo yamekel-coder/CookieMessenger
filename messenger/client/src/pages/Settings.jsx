@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Bell, Lock, Mail, Key, Trash2, ChevronRight,
-  Eye, EyeOff, Check, AlertTriangle, Shield, User, Sun, Moon
+  Bell, Mail, Key, Trash2, ChevronRight,
+  Eye, EyeOff, Check, AlertTriangle, Shield, User, Sun, Moon, AtSign,
+  MessageSquare, Phone, UserPlus,
 } from 'lucide-react';
 
 function Toggle({ checked, onChange }) {
@@ -54,7 +55,14 @@ export default function Settings({ user, onUpdate, onLogout }) {
 
   // loaded settings
   const [notif, setNotif] = useState({ notif_messages: true, notif_mentions: true, notif_updates: true });
-  const [privacy, setPrivacy] = useState({ privacy_show_email: true, privacy_public_profile: true });
+  const [privacy, setPrivacy] = useState({
+    privacy_show_email: true,
+    privacy_public_profile: true,
+    privacy_who_can_message: 'friends',
+    privacy_who_can_call: 'friends',
+    privacy_who_can_add: 'everyone',
+    privacy_show_online: true,
+  });
   const [loading, setLoading] = useState(true);
 
   // expanded panels
@@ -75,7 +83,14 @@ export default function Settings({ user, onUpdate, onLogout }) {
       .then(r => r.json())
       .then(d => {
         setNotif({ notif_messages: !!d.notif_messages, notif_mentions: !!d.notif_mentions, notif_updates: !!d.notif_updates });
-        setPrivacy({ privacy_show_email: !!d.privacy_show_email, privacy_public_profile: !!d.privacy_public_profile });
+        setPrivacy({
+          privacy_show_email: !!d.privacy_show_email,
+          privacy_public_profile: !!d.privacy_public_profile,
+          privacy_who_can_message: d.privacy_who_can_message || 'friends',
+          privacy_who_can_call: d.privacy_who_can_call || 'friends',
+          privacy_who_can_add: d.privacy_who_can_add || 'everyone',
+          privacy_show_online: d.privacy_show_online !== 0,
+        });
         setLoading(false);
       });
   }, []);
@@ -218,6 +233,60 @@ export default function Settings({ user, onUpdate, onLogout }) {
           desc="Профиль виден всем пользователям"
           right={<Toggle checked={privacy.privacy_public_profile} onChange={v => savePrivacy({ ...privacy, privacy_public_profile: v })} />}
         />
+        <div className="settings-divider" />
+        <SettingRow
+          icon={<Eye size={17} />}
+          label="Показывать онлайн-статус"
+          desc="Другие видят когда вы онлайн"
+          right={<Toggle checked={privacy.privacy_show_online} onChange={v => savePrivacy({ ...privacy, privacy_show_online: v })} />}
+        />
+        <div className="settings-divider" />
+        <div className="settings-row" style={{ cursor: 'default' }}>
+          <div className="settings-row-left">
+            <MessageSquare size={17} />
+            <div>
+              <p>Кто может писать мне</p>
+              <span>Ограничьте входящие сообщения</span>
+            </div>
+          </div>
+          <select className="privacy-select" value={privacy.privacy_who_can_message}
+            onChange={e => savePrivacy({ ...privacy, privacy_who_can_message: e.target.value })}>
+            <option value="everyone">Все</option>
+            <option value="friends">Только друзья</option>
+            <option value="nobody">Никто</option>
+          </select>
+        </div>
+        <div className="settings-divider" />
+        <div className="settings-row" style={{ cursor: 'default' }}>
+          <div className="settings-row-left">
+            <Phone size={17} />
+            <div>
+              <p>Кто может звонить мне</p>
+              <span>Ограничьте входящие звонки</span>
+            </div>
+          </div>
+          <select className="privacy-select" value={privacy.privacy_who_can_call}
+            onChange={e => savePrivacy({ ...privacy, privacy_who_can_call: e.target.value })}>
+            <option value="everyone">Все</option>
+            <option value="friends">Только друзья</option>
+            <option value="nobody">Никто</option>
+          </select>
+        </div>
+        <div className="settings-divider" />
+        <div className="settings-row" style={{ cursor: 'default' }}>
+          <div className="settings-row-left">
+            <UserPlus size={17} />
+            <div>
+              <p>Кто может добавлять меня</p>
+              <span>В друзья и группы</span>
+            </div>
+          </div>
+          <select className="privacy-select" value={privacy.privacy_who_can_add}
+            onChange={e => savePrivacy({ ...privacy, privacy_who_can_add: e.target.value })}>
+            <option value="everyone">Все</option>
+            <option value="nobody">Никто</option>
+          </select>
+        </div>
       </Section>
 
       {/* Account */}

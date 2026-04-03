@@ -161,6 +161,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
   const [unreadMap, setUnreadMap] = useState({});
   const [mediaPreview, setMediaPreview] = useState(null); // { src, type, file }
   const [showPicker, setShowPicker] = useState(false);
+  const [convoSearch, setConvoSearch] = useState('');
   const bottomRef = useRef();
   const inputRef = useRef();
   const fileRef = useRef();
@@ -296,9 +297,28 @@ export default function Messages({ user, initialChat, onClearInitial }) {
       {/* Sidebar */}
       <div className="msg-sidebar">
         <div className="msg-sidebar-header"><span>Сообщения</span></div>
+        <div className="msg-search-wrap">
+          <Search size={14} className="msg-search-icon" />
+          <input
+            className="msg-search-input"
+            placeholder="Поиск диалогов..."
+            value={convoSearch}
+            onChange={e => setConvoSearch(e.target.value)}
+          />
+          {convoSearch && (
+            <button className="msg-search-clear" onClick={() => setConvoSearch('')}>
+              <X size={12} />
+            </button>
+          )}
+        </div>
         <div className="msg-convo-list">
           <ConversationList
-            convos={convos}
+            convos={convos.filter(c => {
+              if (!convoSearch) return true;
+              const q = convoSearch.toLowerCase();
+              return (c.display_name || '').toLowerCase().includes(q) ||
+                     c.username.toLowerCase().includes(q);
+            })}
             activeId={activeUser?.id}
             onSelect={openChat}
             currentUserId={user.id}

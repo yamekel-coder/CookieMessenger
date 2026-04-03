@@ -21,7 +21,6 @@ const friendsRoutes = require('./routes/friends');
 const messagesRoutes = require('./routes/messages');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
-const rolesRoutes = require('./routes/roles');
 const ws = require('./ws');
 const { securityHeaders, apiLimiter, sanitizeBody } = require('./middleware/security');
 
@@ -32,8 +31,13 @@ const PORT = process.env.PORT || 3001;
 // ── Security headers on every response ───────────────────────────────────────
 app.use(securityHeaders);
 
-// ── CORS — allow all origins in production ───────────────────────────────────
-app.use(cors());
+// ── CORS — only allow our frontend ───────────────────────────────────────────
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '100mb' }));
@@ -54,7 +58,6 @@ app.use('/api/friends', friendsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/roles', rolesRoutes);
 
 // ── GIF proxy via Tenor ───────────────────────────────────────────────────────
 function httpsGet(url) {
@@ -100,13 +103,13 @@ app.get('/api/gifs', apiLimiter, async (req, res) => {
   }
 });
 
-// ── Serve frontend ────────────────────────────────────────────────────────────
-const path = require('path');
-const distPath = path.join(__dirname, 'client/dist');
-if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+// ── 404 handler ───────────────────────────────────────────────────────────────
+// Serve built frontend if dist exists (production / pterodactyl)
+const distPath = require('path').join(__dirname, '../client/dist');
+if (require('fs').existsSync(distPath)) {
+  app.use(require('express').static(distPath));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+    res.sendFile(require('path').join(distPath, 'index.html'));
   });
 } else {
   app.use((req, res) => res.status(404).json({ error: 'Не найдено' }));

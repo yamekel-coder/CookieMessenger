@@ -43,6 +43,11 @@ migrate('notif_updates', 'INTEGER DEFAULT 1');
 migrate('is_banned', 'INTEGER DEFAULT 0');
 migrate('ban_reason', 'TEXT');
 migrate('role', "TEXT DEFAULT 'user'");
+// Privacy extended
+migrate('privacy_who_can_message', "TEXT DEFAULT 'friends'");
+migrate('privacy_who_can_call',    "TEXT DEFAULT 'friends'");
+migrate('privacy_who_can_add',     "TEXT DEFAULT 'everyone'");
+migrate('privacy_show_online',     'INTEGER DEFAULT 1');
 
 // Posts
 db.exec(`

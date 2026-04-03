@@ -9,6 +9,8 @@ const router = express.Router();
 router.get('/', auth, (req, res) => {
   const user = db.prepare(`
     SELECT privacy_show_email, privacy_public_profile,
+           privacy_who_can_message, privacy_who_can_call,
+           privacy_who_can_add, privacy_show_online,
            notif_messages, notif_mentions, notif_updates, email, username
     FROM users WHERE id = ?
   `).get(req.user.id);
@@ -18,10 +20,36 @@ router.get('/', auth, (req, res) => {
 
 // PUT /api/settings/privacy
 router.put('/privacy', auth, (req, res) => {
-  const { privacy_show_email, privacy_public_profile } = req.body;
+  const {
+    privacy_show_email, privacy_public_profile,
+    privacy_who_can_message, privacy_who_can_call,
+    privacy_who_can_add, privacy_show_online,
+  } = req.body;
+
+  const allowed = ['friends', 'everyone', 'nobody'];
+  if (privacy_who_can_message && !allowed.includes(privacy_who_can_message))
+    return res.status(400).json({ error: 'Неверное значение' });
+  if (privacy_who_can_call && !allowed.includes(privacy_who_can_call))
+    return res.status(400).json({ error: 'Неверное значение' });
+
   db.prepare(`
-    UPDATE users SET privacy_show_email = ?, privacy_public_profile = ? WHERE id = ?
-  `).run(privacy_show_email ? 1 : 0, privacy_public_profile ? 1 : 0, req.user.id);
+    UPDATE users SET
+      privacy_show_email = ?,
+      privacy_public_profile = ?,
+      privacy_who_can_message = ?,
+      privacy_who_can_call = ?,
+      privacy_who_can_add = ?,
+      privacy_show_online = ?
+    WHERE id = ?
+  `).run(
+    privacy_show_email ? 1 : 0,
+    privacy_public_profile ? 1 : 0,
+    privacy_who_can_message || 'friends',
+    privacy_who_can_call || 'friends',
+    privacy_who_can_add || 'everyone',
+    privacy_show_online !== undefined ? (privacy_show_online ? 1 : 0) : 1,
+    req.user.id
+  );
   res.json({ ok: true });
 });
 

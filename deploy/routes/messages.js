@@ -74,8 +74,20 @@ router.post('/:userId', auth, validateLengths({ content: 2000 }), (req, res) => 
   const receiverId = parseInt(req.params.userId);
   if (isNaN(receiverId)) return res.status(400).json({ error: 'Неверный ID' });
   if (receiverId === req.user.id) return res.status(400).json({ error: 'Нельзя писать себе' });
-  if (!areFriends(req.user.id, receiverId))
-    return res.status(403).json({ error: 'Вы не друзья' });
+
+  // Check receiver privacy
+  const receiver = db.prepare('SELECT privacy_who_can_message FROM users WHERE id = ?').get(receiverId);
+  if (!receiver) return res.status(404).json({ error: 'Пользователь не найден' });
+
+  const canMsg = receiver.privacy_who_can_message || 'friends';
+  if (canMsg === 'nobody')
+    return res.status(403).json({ error: 'Этот пользователь не принимает сообщения' });
+  if (canMsg === 'friends' && !areFriends(req.user.id, receiverId))
+    return res.status(403).json({ error: 'Этот пользователь принимает сообщения только от друзей' });
+
+  // Cooldown 1 sec
+  if (!checkMsgCooldown(req.user.id))
+    return res.status(429).json({ error: 'Слишком быстро. Подождите секунду.' });
 
   const { content, media, media_type } = req.body;
   if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустое сообщение' });

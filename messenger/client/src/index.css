@@ -4391,3 +4391,90 @@ body {
 [data-theme="light"] .adm-sidebar {
   box-shadow: 2px 0 8px rgba(0,0,0,0.05) !important;
 }
+
+/* ── Messages search ─────────────────────────────────────────────────────── */
+.msg-search-wrap {
+  position: relative;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.msg-search-icon { color: #444; flex-shrink: 0; }
+.msg-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f0f0f0;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+}
+.msg-search-input::placeholder { color: #333; }
+.msg-search-clear {
+  background: none; border: none; color: #444; cursor: pointer;
+  display: flex; align-items: center; padding: 2px;
+  border-radius: 4px; transition: color 0.2s;
+}
+.msg-search-clear:hover { color: #888; }
+
+[data-theme="light"] .msg-search-wrap { border-color: var(--border); }
+[data-theme="light"] .msg-search-icon { color: var(--text4); }
+[data-theme="light"] .msg-search-input { color: var(--text); }
+[data-theme="light"] .msg-search-input::placeholder { color: var(--text4); }
+[data-theme="light"] .msg-search-clear { color: var(--text4); }
+
+/* ── UserProfile write button ────────────────────────────────────────────── */
+.up-msg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 0.82rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.up-msg-btn:hover {
+  border-color: #555;
+  color: #fff;
+  background: #161616;
+}
+
+[data-theme="light"] .up-msg-btn {
+  border-color: var(--border2);
+  color: var(--text3);
+}
+[data-theme="light"] .up-msg-btn:hover {
+  border-color: #999;
+  color: var(--text);
+  background: var(--bg4);
+}
+
+/* ── Privacy select ──────────────────────────────────────────────────────── */
+.privacy-select {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  color: #ccc;
+  font-size: 0.82rem;
+  font-family: 'Inter', sans-serif;
+  padding: 0.4rem 0.7rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.privacy-select:hover { border-color: #444; }
+.privacy-select:focus { border-color: #555; }
+
+[data-theme="light"] .privacy-select {
+  background: var(--bg2);
+  border-color: var(--border2);
+  color: var(--text2);
+}
+[data-theme="light"] .privacy-select:hover { border-color: #999; }
