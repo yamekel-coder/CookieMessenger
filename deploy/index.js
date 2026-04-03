@@ -21,6 +21,7 @@ const friendsRoutes = require('./routes/friends');
 const messagesRoutes = require('./routes/messages');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
+const rolesRoutes = require('./routes/roles');
 const ws = require('./ws');
 const { securityHeaders, apiLimiter, sanitizeBody } = require('./middleware/security');
 
@@ -31,13 +32,8 @@ const PORT = process.env.PORT || 3001;
 // ── Security headers on every response ───────────────────────────────────────
 app.use(securityHeaders);
 
-// ── CORS — only allow our frontend ───────────────────────────────────────────
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
+// ── CORS — allow all origins for VDS deployment ──────────────────────────────
+app.use(cors());
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '100mb' }));
@@ -58,6 +54,7 @@ app.use('/api/friends', friendsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/roles', rolesRoutes);
 
 // ── GIF proxy via Tenor ───────────────────────────────────────────────────────
 function httpsGet(url) {

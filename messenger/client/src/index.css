@@ -1688,6 +1688,13 @@ body {
   height: calc(100vh - 0px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* Messages inside profile — override height to fit container */
+.profile-content--full .messages-page {
+  height: 100%;
+  min-height: 0;
 }
 
 /* ══════════════════════════════════════
@@ -4478,3 +4485,9 @@ body {
   color: var(--text2);
 }
 [data-theme="light"] .privacy-select:hover { border-color: #999; }
+
+/* ── Messages tab — remove profile-main padding ─────────────────────────── */
+.profile-main:has(.profile-content--full) {
+  padding: 0;
+  overflow: hidden;
+}
