@@ -67,12 +67,13 @@ function setup(server) {
 
         // Only relay whitelisted signaling events
         if (ALLOWED_SIGNALING.has(msg.event) && msg.to && Number.isInteger(msg.to)) {
-          // Check call privacy for incoming calls
+          // Privacy check only for INITIATING a call (call_offer)
+          // All other signaling (answer, ice, reject, end) must pass through freely
           if (msg.event === 'call_offer') {
             const db = require('./db');
             const target = db.prepare('SELECT privacy_who_can_call FROM users WHERE id = ?').get(msg.to);
             if (target) {
-              const setting = target.privacy_who_can_call || 'friends';
+              const setting = target.privacy_who_can_call || 'everyone';
               if (setting === 'nobody') return;
               if (setting === 'friends') {
                 const areFriends = !!db.prepare(`
