@@ -4614,3 +4614,116 @@ body {
 }
 [data-theme="light"] .grp-chat .msg-messages { background: var(--bg); }
 [data-theme="light"] .grp-chat .msg-input-area { background: var(--bg3); border-color: var(--border); }
+
+/* ── Discord OAuth & Captcha ─────────────────────────────────────────────── */
+.btn-discord {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: #5865F2;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  margin-bottom: 1.25rem;
+  transition: background 0.2s, opacity 0.2s;
+}
+.btn-discord:hover { background: #4752c4; }
+.btn-discord:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.discord-verified-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  background: rgba(88,101,242,0.1);
+  border: 1px solid rgba(88,101,242,0.3);
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+}
+.discord-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.discord-verified-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5865F2;
+}
+.discord-verified-name {
+  display: block;
+  font-size: 0.75rem;
+  color: #888;
+}
+.discord-remove-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+.discord-remove-btn:hover { color: #ff6b6b; }
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.captcha-question {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  font-family: monospace;
+  flex-shrink: 0;
+}
+.captcha-input-wrap {
+  flex: 1;
+}
+.captcha-input-wrap input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  background: #0a0a0a;
+  border: 1px solid #222;
+  border-radius: 8px;
+  color: #f0f0f0;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+}
+.captcha-input-wrap input:focus { border-color: #444; }
+.captcha-refresh {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  color: #666;
+  cursor: pointer;
+  padding: 0.65rem;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.captcha-refresh:hover { color: #fff; border-color: #444; }
+
+[data-theme="light"] .captcha-question { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+[data-theme="light"] .captcha-input-wrap input { background: var(--input-bg); border-color: var(--border2); color: var(--text); }
+[data-theme="light"] .captcha-refresh { background: var(--bg4); border-color: var(--border2); color: var(--text3); }
+[data-theme="light"] .discord-verified-badge { background: rgba(88,101,242,0.08); }
