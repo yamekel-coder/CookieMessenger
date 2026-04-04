@@ -5,10 +5,28 @@ import {
   Mic, MicOff, Monitor, MonitorOff,
 } from 'lucide-react';
 
+// ── ICE servers — STUN + free TURN (metered.ca) ───────────────────────────────
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  // Free TURN servers for NAT traversal
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
 // ── Ringtone ──────────────────────────────────────────────────────────────────
@@ -19,22 +37,22 @@ function useRingtone() {
     stop();
     const play = () => {
       try {
-        const c = new (window.AudioContext || window.webkitAudioContext)();
-        [0, 0.2].forEach(offset => {
+        const c = new AudioContext();
+        [0, 0.25].forEach(offset => {
           const osc = c.createOscillator();
           const gain = c.createGain();
           osc.connect(gain); gain.connect(c.destination);
-          osc.frequency.value = 440 + offset * 200;
-          gain.gain.setValueAtTime(0.2, c.currentTime + offset);
-          gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + offset + 0.15);
+          osc.frequency.value = 440 + offset * 180;
+          gain.gain.setValueAtTime(0.15, c.currentTime + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + offset + 0.18);
           osc.start(c.currentTime + offset);
-          osc.stop(c.currentTime + offset + 0.15);
+          osc.stop(c.currentTime + offset + 0.18);
         });
-        setTimeout(() => { try { c.close(); } catch {} }, 1000);
+        setTimeout(() => { try { c.close(); } catch {} }, 1200);
       } catch {}
     };
     play();
-    interval.current = setInterval(play, 1500);
+    interval.current = setInterval(play, 1800);
   }, []);
 
   const stop = useCallback(() => {
@@ -47,7 +65,7 @@ function useRingtone() {
 
 // ── CallManager ───────────────────────────────────────────────────────────────
 export default function CallManager({ currentUser }) {
-  const [callState, setCallState] = useState('idle'); // idle | calling | incoming | active
+  const [callState, setCallState] = useState('idle');
   const [callType, setCallType] = useState('audio');
   const [remoteUser, setRemoteUser] = useState(null);
   const [micOn, setMicOn] = useState(true);
@@ -55,11 +73,12 @@ export default function CallManager({ currentUser }) {
   const [screenOn, setScreenOn] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [callError, setCallError] = useState(null);
+  const [connectionState, setConnectionState] = useState('');
 
-  // Use refs for values needed inside callbacks to avoid stale closures
   const callStateRef = useRef('idle');
   const remoteUserRef = useRef(null);
   const incomingDataRef = useRef(null);
+  const iceCandidateBuffer = useRef([]); // buffer ICE candidates until remote desc is set
 
   const pc = useRef(null);
   const localStream = useRef(null);
@@ -85,10 +104,12 @@ export default function CallManager({ currentUser }) {
     screenStream.current = null;
     try { pc.current?.close(); } catch {}
     pc.current = null;
+    iceCandidateBuffer.current = [];
     remoteUserRef.current = null;
     incomingDataRef.current = null;
     setCallStateSync('idle');
     setCallDuration(0);
+    setConnectionState('');
     setMicOn(true); setCamOn(true); setScreenOn(false);
     setRemoteUser(null);
   }, [ringtone]);
@@ -96,22 +117,30 @@ export default function CallManager({ currentUser }) {
   // ── Create PeerConnection ──────────────────────────────────────────────────
   const createPC = useCallback((targetId) => {
     if (pc.current) { try { pc.current.close(); } catch {} }
+    iceCandidateBuffer.current = [];
 
-    const conn = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const conn = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      iceCandidatePoolSize: 10,
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+    });
 
     conn.onicecandidate = (e) => {
       if (e.candidate) wsSend('call_ice', targetId, { candidate: e.candidate });
     };
 
-    conn.ontrack = (e) => {
-      if (remoteVideoRef.current && e.streams[0]) {
-        remoteVideoRef.current.srcObject = e.streams[0];
+    conn.oniceconnectionstatechange = () => {
+      setConnectionState(conn.iceConnectionState);
+      if (conn.iceConnectionState === 'failed') {
+        // Try ICE restart
+        if (conn.restartIce) conn.restartIce();
       }
     };
 
     conn.onconnectionstatechange = () => {
+      setConnectionState(conn.connectionState);
       if (['disconnected', 'failed', 'closed'].includes(conn.connectionState)) {
-        // Send end signal to remote before cleanup
         const ru = remoteUserRef.current;
         const id = incomingDataRef.current;
         if (ru) wsSend('call_end', ru.id, {});
@@ -120,22 +149,57 @@ export default function CallManager({ currentUser }) {
       }
     };
 
+    conn.ontrack = (e) => {
+      if (remoteVideoRef.current && e.streams[0]) {
+        remoteVideoRef.current.srcObject = e.streams[0];
+      }
+    };
+
     pc.current = conn;
     return conn;
   }, [cleanup]);
 
-  // ── Get local media ────────────────────────────────────────────────────────
+  // ── Get local media with noise suppression ────────────────────────────────
   const getMedia = useCallback(async (type) => {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error('Для звонков требуется HTTPS. Откройте сайт по защищённому соединению.');
     }
+
+    const audioConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: 48000,
+      channelCount: 1,
+      latency: 0,
+    };
+
+    const videoConstraints = type === 'video' ? {
+      width: { ideal: 1280, max: 1920 },
+      height: { ideal: 720, max: 1080 },
+      frameRate: { ideal: 30, max: 60 },
+      facingMode: 'user',
+    } : false;
+
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: type === 'video' ? { width: 1280, height: 720, facingMode: 'user' } : false,
+      audio: audioConstraints,
+      video: videoConstraints,
     });
+
     localStream.current = stream;
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+    if (localVideoRef.current && type === 'video') {
+      localVideoRef.current.srcObject = stream;
+    }
     return stream;
+  }, []);
+
+  // ── Flush buffered ICE candidates ─────────────────────────────────────────
+  const flushIceCandidates = useCallback(async () => {
+    if (!pc.current || !pc.current.remoteDescription) return;
+    const buf = iceCandidateBuffer.current.splice(0);
+    for (const candidate of buf) {
+      try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+    }
   }, []);
 
   // ── Start call ─────────────────────────────────────────────────────────────
@@ -151,7 +215,11 @@ export default function CallManager({ currentUser }) {
       const conn = createPC(targetUser.id);
       stream.getTracks().forEach(t => conn.addTrack(t, stream));
 
-      const offer = await conn.createOffer();
+      const offer = await conn.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: type === 'video',
+        voiceActivityDetection: true,
+      });
       await conn.setLocalDescription(offer);
 
       wsSend('call_offer', targetUser.id, {
@@ -181,16 +249,21 @@ export default function CallManager({ currentUser }) {
       stream.getTracks().forEach(t => conn.addTrack(t, stream));
 
       await conn.setRemoteDescription(new RTCSessionDescription(incoming.offer));
-      const answer = await conn.createAnswer();
+      await flushIceCandidates();
+
+      const answer = await conn.createAnswer({
+        voiceActivityDetection: true,
+      });
       await conn.setLocalDescription(answer);
 
       wsSend('call_answer', incoming.from, { answer });
       durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000);
     } catch (err) {
       console.error('[Call] answerCall error:', err);
+      setCallError('Ошибка при ответе на звонок');
       cleanup();
     }
-  }, [ringtone, getMedia, createPC, cleanup]);
+  }, [ringtone, getMedia, createPC, flushIceCandidates, cleanup]);
 
   // ── Reject ─────────────────────────────────────────────────────────────────
   const rejectCall = useCallback(() => {
@@ -235,7 +308,7 @@ export default function CallManager({ currentUser }) {
       setScreenOn(false);
     } else {
       try {
-        const screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         screenStream.current = screen;
         const screenTrack = screen.getVideoTracks()[0];
         const sender = pc.current.getSenders().find(s => s.track?.kind === 'video');
@@ -257,7 +330,12 @@ export default function CallManager({ currentUser }) {
       }
       incomingDataRef.current = data;
       setCallType(data.type || 'audio');
-      const ru = { id: data.from, display_name: data.callerName, avatar: data.callerAvatar, accent_color: data.callerAccent };
+      const ru = {
+        id: data.from,
+        display_name: data.callerName,
+        avatar: data.callerAvatar,
+        accent_color: data.callerAccent,
+      };
       remoteUserRef.current = ru;
       setRemoteUser(ru);
       setCallStateSync('incoming');
@@ -268,6 +346,7 @@ export default function CallManager({ currentUser }) {
       if (!pc.current) return;
       try {
         await pc.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+        await flushIceCandidates();
         setCallStateSync('active');
         durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000);
       } catch (err) {
@@ -277,9 +356,13 @@ export default function CallManager({ currentUser }) {
     },
 
     call_ice: async (data) => {
+      if (!data.candidate) return;
       try {
-        if (pc.current && data.candidate && pc.current.remoteDescription) {
+        if (pc.current?.remoteDescription) {
           await pc.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } else {
+          // Buffer until remote description is set
+          iceCandidateBuffer.current.push(data.candidate);
         }
       } catch {}
     },
@@ -289,14 +372,13 @@ export default function CallManager({ currentUser }) {
     call_busy:   () => { cleanup(); },
   });
 
-  // Expose startCall globally — use ref to avoid stale closure issues
+  // Expose startCall globally
   const startCallRef = useRef(startCall);
   useEffect(() => { startCallRef.current = startCall; }, [startCall]);
-
   useEffect(() => {
     window.__startCall = (...args) => startCallRef.current(...args);
     return () => { delete window.__startCall; };
-  }, []); // mount once only
+  }, []);
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   const accent = remoteUser?.accent_color || currentUser?.accent_color || '#fff';
@@ -371,20 +453,28 @@ export default function CallManager({ currentUser }) {
             <div className="call-hud-info">
               <span className="call-hud-name" style={{ color: accent }}>{remoteName}</span>
               <span className="call-hud-timer">{fmt(callDuration)}</span>
+              {connectionState && connectionState !== 'connected' && (
+                <span className="call-conn-state">{
+                  connectionState === 'connecting' ? '🔄 Подключение...' :
+                  connectionState === 'checking' ? '🔄 Проверка...' :
+                  connectionState === 'disconnected' ? '⚠️ Нестабильно' :
+                  connectionState === 'failed' ? '❌ Ошибка связи' : ''
+                }</span>
+              )}
             </div>
             <div className="call-controls">
-              <button className={`call-ctrl ${!micOn ? 'call-ctrl--off' : ''}`} onClick={toggleMic}>
+              <button className={`call-ctrl ${!micOn ? 'call-ctrl--off' : ''}`} onClick={toggleMic} title={micOn ? 'Выкл. микрофон' : 'Вкл. микрофон'}>
                 {micOn ? <Mic size={18} /> : <MicOff size={18} />}
               </button>
               {callType === 'video' && (
-                <button className={`call-ctrl ${!camOn ? 'call-ctrl--off' : ''}`} onClick={toggleCam}>
+                <button className={`call-ctrl ${!camOn ? 'call-ctrl--off' : ''}`} onClick={toggleCam} title={camOn ? 'Выкл. камеру' : 'Вкл. камеру'}>
                   {camOn ? <Video size={18} /> : <VideoOff size={18} />}
                 </button>
               )}
-              <button className={`call-ctrl ${screenOn ? 'call-ctrl--active' : ''}`} onClick={toggleScreen}>
+              <button className={`call-ctrl ${screenOn ? 'call-ctrl--active' : ''}`} onClick={toggleScreen} title={screenOn ? 'Стоп демонстрация' : 'Демонстрация экрана'}>
                 {screenOn ? <MonitorOff size={18} /> : <Monitor size={18} />}
               </button>
-              <button className="call-ctrl call-ctrl--end" onClick={endCall}>
+              <button className="call-ctrl call-ctrl--end" onClick={endCall} title="Завершить">
                 <PhoneOff size={18} />
               </button>
             </div>

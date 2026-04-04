@@ -4773,3 +4773,11 @@ body {
 [data-theme="light"] .register-step-num { background: var(--bg4); border-color: var(--border2); }
 [data-theme="light"] .register-step.active .register-step-num { background: #111; color: #fff; border-color: #111; }
 [data-theme="light"] .register-step-line { background: var(--border2); }
+
+/* ── Call connection state ───────────────────────────────────────────────── */
+.call-conn-state {
+  font-size: 11px;
+  color: #ffd43b;
+  display: block;
+  margin-top: 2px;
+}
