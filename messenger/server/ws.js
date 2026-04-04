@@ -5,10 +5,13 @@ const { wsRateLimit } = require('./middleware/security');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 const clients = new Map(); // userId -> Set<ws>
 
-// Per-user WS message rate limit: max 30 messages per 10 seconds
+// Per-user WS message rate limit: max 100 messages per 10 seconds (increased for ICE candidates)
 const wsMessageRate = new Map(); // userId -> { count, resetAt }
 
-function checkWsMessageRate(userId) {
+function checkWsMessageRate(userId, event) {
+  // ICE candidates don't count towards rate limit (too many during call setup)
+  if (event === 'call_ice') return true;
+  
   const now = Date.now();
   const entry = wsMessageRate.get(userId);
   if (!entry || now > entry.resetAt) {
@@ -16,7 +19,7 @@ function checkWsMessageRate(userId) {
     return true;
   }
   entry.count++;
-  return entry.count <= 30;
+  return entry.count <= 100; // Increased from 30 to 100
 }
 
 const ALLOWED_SIGNALING = new Set([
@@ -46,8 +49,11 @@ function setup(server) {
     }, 5000);
 
     ws.on('message', (raw) => {
-      // Reject oversized messages (max 64KB for signaling)
-      if (raw.length > 65536) return;
+      // Reject oversized messages - increased to 256KB for large SDP with many ICE candidates
+      if (raw.length > 262144) {
+        console.log(`[WS] Message too large: ${raw.length} bytes`);
+        return;
+      }
 
       try {
         const msg = JSON.parse(raw);
@@ -88,20 +94,26 @@ function setup(server) {
           return;
         }
 
-        // Rate limit per user
-        if (!checkWsMessageRate(userId)) return;
+        // Rate limit per user (pass event for ICE exception)
+        if (!checkWsMessageRate(userId, msg.event)) {
+          console.log(`[WS] Rate limit exceeded for user ${userId}, event: ${msg.event}`);
+          return;
+        }
 
         // Only relay whitelisted signaling events
         if (ALLOWED_SIGNALING.has(msg.event) && msg.to && Number.isInteger(msg.to)) {
-          console.log(`[WS] ${msg.event} from ${userId} to ${msg.to}, target online: ${clients.has(msg.to)}`);
+          const targetOnline = clients.has(msg.to);
+          console.log(`[WS] ${msg.event} from ${userId} to ${msg.to}, target online: ${targetOnline}`);
           
           // Log answer specifically
           if (msg.event === 'call_answer') {
-            console.log(`[WS] call_answer: has SDP: ${!!msg.data?.answer?.sdp}`);
+            console.log(`[WS] call_answer: has SDP: ${!!msg.data?.answer?.sdp}, SDP length: ${msg.data?.answer?.sdp?.length || 0}`);
           }
           
-          // Privacy check only for INITIATING a call (call_offer)
+          // Log offer specifically
           if (msg.event === 'call_offer') {
+            console.log(`[WS] call_offer: has SDP: ${!!msg.data?.offer?.sdp}, SDP length: ${msg.data?.offer?.sdp?.length || 0}`);
+            
             const db = require('./db');
             const target = db.prepare('SELECT privacy_who_can_call FROM users WHERE id = ?').get(msg.to);
             const setting = target?.privacy_who_can_call || 'everyone';
@@ -123,8 +135,14 @@ function setup(server) {
             }
           }
           
+          if (!targetOnline) {
+            console.log(`[WS] Target ${msg.to} is OFFLINE, cannot deliver ${msg.event}`);
+          }
+          
           const sent = sendTo(msg.to, msg.event, { ...msg.data, from: userId });
           console.log(`[WS] ${msg.event} ${sent ? 'delivered' : 'FAILED to deliver'} to ${msg.to}`);
+        } else if (ALLOWED_SIGNALING.has(msg.event)) {
+          console.log(`[WS] Invalid signaling message: event=${msg.event}, to=${msg.to}, isInteger=${Number.isInteger(msg.to)}`);
         }
       } catch (err) {
         console.error('[WS] Message handling error:', err);
