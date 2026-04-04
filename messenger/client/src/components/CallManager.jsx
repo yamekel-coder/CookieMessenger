@@ -230,6 +230,7 @@ export default function CallManager({ currentUser }) {
   // ── Start call ─────────────────────────────────────────────────────────────
   const startCall = useCallback(async (targetUser, type = 'audio') => {
     console.log('[Call] Starting call to', targetUser.username, 'type:', type);
+    console.log('[Call] WebSocket readyState:', wsReadyState());
     
     // Check if already in call
     if (callStateRef.current !== 'idle') {
@@ -238,10 +239,23 @@ export default function CallManager({ currentUser }) {
       await new Promise(r => setTimeout(r, 200));
     }
 
-    // Check WebSocket
-    if (wsReadyState() !== 1) {
+    // Check WebSocket - allow CONNECTING state too
+    const wsState = wsReadyState();
+    if (wsState !== 1 && wsState !== 0) {
+      console.error('[Call] WebSocket not ready, state:', wsState);
       setCallError('Нет соединения');
       return;
+    }
+    
+    // If connecting, wait a bit
+    if (wsState === 0) {
+      console.log('[Call] WebSocket connecting, waiting...');
+      await new Promise(r => setTimeout(r, 500));
+      if (wsReadyState() !== 1) {
+        console.error('[Call] WebSocket still not ready after wait');
+        setCallError('Нет соединения');
+        return;
+      }
     }
 
     setCallStateSync('calling');

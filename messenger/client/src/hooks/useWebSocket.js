@@ -67,15 +67,14 @@ export function wsDisconnect() {
   isConnecting = false;
 }
 
-// Send a message through the WS — call signaling bypasses queue
+// Send a message through the WS
 export function wsSend(event, to, data) {
   const msg = JSON.stringify({ event, to, data });
   if (globalWs?.readyState === WebSocket.OPEN) {
+    console.log('[WS] Sending', event, 'to', to);
     globalWs.send(msg);
-  } else if (['call_offer', 'call_answer', 'call_ice', 'call_reject', 'call_end', 'call_busy'].includes(event)) {
-    // Don't queue call signaling — it's time-sensitive and stale offers cause bugs
-    console.warn('[WS] Cannot send', event, '— not connected');
   } else {
+    console.warn('[WS] Not connected, queueing', event);
     pendingQueue.push(msg);
     connect();
   }
