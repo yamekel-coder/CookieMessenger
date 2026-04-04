@@ -2263,6 +2263,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .up-loading {
@@ -2282,27 +2284,31 @@ body {
   font-size: 0.85rem;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
-  padding: 0.4rem 0;
+  padding: 0.4rem 1rem;
   margin-bottom: 0.75rem;
   transition: color 0.15s;
 }
 .up-back:hover { color: #aaa; }
 
 .up-banner {
-  height: 140px;
+  height: 200px;
   background: #111;
-  border-radius: 12px;
+  border-radius: 0;
   background-size: cover;
   background-position: center;
-  border: 1px solid #1a1a1a;
-  margin-bottom: -36px;
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  margin-bottom: -48px;
 }
 
 .up-header {
   display: flex;
   gap: 1rem;
-  padding: 0 1rem 1rem;
+  padding: 0 2rem 1.5rem;
   align-items: flex-end;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .up-avatar-wrap {
@@ -2445,6 +2451,11 @@ body {
   flex-direction: column;
   gap: 0.75rem;
   margin-top: 1rem;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding: 0 1rem;
 }
 
 .up-empty {
@@ -2459,6 +2470,11 @@ body {
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding: 0 1rem;
 }
 
 .up-user-row {

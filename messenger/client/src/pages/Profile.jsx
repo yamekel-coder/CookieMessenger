@@ -526,7 +526,10 @@ export default function Profile({ user, onUpdate, onLogout }) {
 
         {tab === 'feed' && (
           <div className="profile-content" style={{ maxWidth: 680 }}>
-            <Feed user={user} />
+            <Feed user={user} onOpenChat={(targetUser) => {
+              setChatTarget(targetUser);
+              setTab('messages');
+            }} />
           </div>
         )}
 

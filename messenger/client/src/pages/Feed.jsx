@@ -6,7 +6,7 @@ import UserProfile from './UserProfile';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { Loader } from 'lucide-react';
 
-export default function Feed({ user }) {
+export default function Feed({ user, onOpenChat }) {
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -119,6 +119,7 @@ export default function Feed({ user }) {
           username={viewingUser}
           currentUser={user}
           onBack={() => setViewingUser(null)}
+          onOpenChat={onOpenChat}
         />
       </div>
     );
