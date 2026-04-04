@@ -39,22 +39,11 @@ const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
   
-  // Your own TURN server (primary - most reliable)
-  {
-    urls: 'turn:213.152.43.207:3478',
-    username: 'cookiemessenger',
-    credential: 'ade029c0999b51caff7ac2b55b45e1ef',
-  },
-  {
-    urls: 'turn:213.152.43.207:3478?transport=tcp',
-    username: 'cookiemessenger',
-    credential: 'ade029c0999b51caff7ac2b55b45e1ef',
-  },
+  // Twilio STUN (reliable)
+  { urls: 'stun:global.stun.twilio.com:3478' },
   
-  // Free TURN servers for NAT traversal (backup)
+  // Free public TURN servers (most reliable)
   {
     urls: 'turn:openrelay.metered.ca:80',
     username: 'openrelayproject',
@@ -70,16 +59,17 @@ const ICE_SERVERS = [
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
-  // Backup TURN server
+  
+  // Your own TURN server (if working)
   {
-    urls: 'turn:relay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    urls: 'turn:213.152.43.207:3478',
+    username: 'cookiemessenger',
+    credential: 'ade029c0999b51caff7ac2b55b45e1ef',
   },
   {
-    urls: 'turn:relay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
+    urls: 'turn:213.152.43.207:3478?transport=tcp',
+    username: 'cookiemessenger',
+    credential: 'ade029c0999b51caff7ac2b55b45e1ef',
   },
 ];
 
