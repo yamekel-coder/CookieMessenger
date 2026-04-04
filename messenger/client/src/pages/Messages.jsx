@@ -258,7 +258,6 @@ export default function Messages({ user, initialChat, onClearInitial }) {
         media: mediaPreview?.src || null,
         media_type: mediaPreview?.type || null,
       };
-      console.log('[Messages] Sending message to', activeUser.id, body);
       
       const res = await api(`/api/messages/${activeUser.id}`, {
         method: 'POST',
@@ -266,18 +265,14 @@ export default function Messages({ user, initialChat, onClearInitial }) {
       });
       
       if (res.ok) {
-        const msg = await res.json();
-        console.log('[Messages] Message sent successfully:', msg);
         setText('');
         setMediaPreview(null);
         loadConvos();
       } else {
         const error = await res.json();
-        console.error('[Messages] Failed to send message:', error);
         alert(`Ошибка отправки: ${error.error || 'Неизвестная ошибка'}`);
       }
     } catch (err) {
-      console.error('[Messages] Error sending message:', err);
       alert('Ошибка отправки сообщения');
     } finally {
       setSending(false);
@@ -288,22 +283,14 @@ export default function Messages({ user, initialChat, onClearInitial }) {
   useEffect(() => {
     const handler = (e) => {
       const msg = e.detail;
-      console.log('[Messages] Received new_message event:', msg);
-      
       const partnerId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-      console.log('[Messages] Partner ID:', partnerId, 'Active user ID:', activeUser?.id);
 
       if (activeUser?.id === partnerId) {
-        console.log('[Messages] Adding message to active chat');
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
         // Mark as read
-        if (msg.sender_id !== user.id) {
-          console.log('[Messages] Marking message as read');
-          api(`/api/messages/${msg.sender_id}`);
-        }
+        if (msg.sender_id !== user.id) api(`/api/messages/${msg.sender_id}`);
       } else if (msg.sender_id !== user.id) {
-        console.log('[Messages] Incrementing unread count for user', msg.sender_id);
         setUnreadMap(prev => ({ ...prev, [msg.sender_id]: (prev[msg.sender_id] || 0) + 1 }));
       }
       loadConvos();

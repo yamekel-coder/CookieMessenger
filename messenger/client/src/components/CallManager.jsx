@@ -179,40 +179,24 @@ export default function CallManager({ currentUser }) {
     // ICE candidate gathering
     conn.onicecandidate = (e) => {
       if (e.candidate) {
-        const type = e.candidate.type; // host, srflx, relay
-        const protocol = e.candidate.protocol; // udp, tcp
-        const address = e.candidate.address || e.candidate.ip;
-        
-        console.log(`[Call] 📡 ICE candidate: ${type} (${protocol}) - ${address}`);
-        
-        // Log what type of connection we're trying
-        if (type === 'host') {
-          console.log('[Call] 🏠 Local network candidate (P2P direct)');
-        } else if (type === 'srflx') {
-          console.log('[Call] 🌐 Public IP candidate via STUN (P2P through NAT)');
-        } else if (type === 'relay') {
-          console.log('[Call] 🔄 TURN relay candidate (traffic through server)');
-        }
-        
         wsSend('call_ice', targetId, { candidate: e.candidate });
       }
     };
 
     // ICE gathering state
     conn.onicegatheringstatechange = () => {
-      console.log('[Call] ICE gathering state:', conn.iceGatheringState);
+      // Silent - no logging needed
     };
 
     // Connection state monitoring (Telegram-style)
     conn.oniceconnectionstatechange = () => {
       const state = conn.iceConnectionState;
-      console.log('[Call] ICE connection state:', state);
       setConnectionState(state);
       
       if (state === 'connected' || state === 'completed') {
         setReconnectAttempts(0);
         
-        // Log which candidate pair was selected (shows connection type)
+        // Determine connection type
         conn.getStats().then(stats => {
           stats.forEach(report => {
             if (report.type === 'candidate-pair' && report.state === 'succeeded') {
@@ -223,22 +207,17 @@ export default function CallManager({ currentUser }) {
                 const localType = localCandidate.candidateType;
                 const remoteType = remoteCandidate.candidateType;
                 
-                console.log(`[Call] ✅ Connected using: Local=${localType}, Remote=${remoteType}`);
-                
                 if (localType === 'relay' || remoteType === 'relay') {
-                  console.log('[Call] 🔄 Using TURN relay server (traffic goes through VDS)');
                   setConnectionType('relay');
                 } else if (localType === 'srflx' || remoteType === 'srflx') {
-                  console.log('[Call] 🌐 Using STUN P2P (direct connection through NAT)');
                   setConnectionType('p2p');
                 } else if (localType === 'host' && remoteType === 'host') {
-                  console.log('[Call] 🏠 Using local network P2P (same network)');
                   setConnectionType('local');
                 }
               }
             }
           });
-        });
+        }).catch(() => {});
         
         monitorConnectionQuality(conn);
       } else if (state === 'disconnected') {
@@ -246,7 +225,6 @@ export default function CallManager({ currentUser }) {
         setReconnectAttempts(prev => {
           const attempts = prev + 1;
           if (attempts <= 3) {
-            console.log('[Call] Attempting reconnect', attempts);
             setTimeout(() => {
               if (conn.restartIce) conn.restartIce();
             }, 1000);
@@ -256,7 +234,6 @@ export default function CallManager({ currentUser }) {
       } else if (state === 'failed') {
         // Final attempt with ICE restart
         if (conn.restartIce && reconnectAttempts < 3) {
-          console.log('[Call] ICE failed, restarting...');
           conn.restartIce();
         } else {
           setCallError('Соединение потеряно');
@@ -270,7 +247,6 @@ export default function CallManager({ currentUser }) {
     };
 
     conn.onconnectionstatechange = () => {
-      console.log('[Call] Connection state:', conn.connectionState);
       if (['closed'].includes(conn.connectionState)) {
         const ru = remoteUserRef.current;
         const id = incomingDataRef.current;
@@ -281,7 +257,6 @@ export default function CallManager({ currentUser }) {
     };
 
     conn.ontrack = (e) => {
-      console.log('[Call] Track received:', e.track.kind);
       if (e.track.kind === 'audio') {
         if (!window.remoteAudio) {
           const audioEl = new Audio();
@@ -400,9 +375,9 @@ export default function CallManager({ currentUser }) {
           });
         }
 
-        console.log('[Call] Quality:', quality, 'Loss:', lossPercent.toFixed(1) + '%', 'RTT:', rtt.toFixed(0) + 'ms');
+        // Silent quality monitoring - no console logs
       } catch (err) {
-        console.error('[Call] Stats error:', err);
+        // Silent - stats errors are not critical
       }
     };
 
@@ -424,7 +399,6 @@ export default function CallManager({ currentUser }) {
   const startCall = useCallback(async (targetUser, type = 'audio') => {
     // Force cleanup any stale state before starting new call
     if (callStateRef.current !== 'idle') {
-      console.log('[Call] Force cleanup stale state:', callStateRef.current);
       cleanup();
       // Wait a tick for cleanup to complete
       await new Promise(r => setTimeout(r, 100));
@@ -480,7 +454,7 @@ export default function CallManager({ currentUser }) {
       }, 30000);
 
     } catch (err) {
-      console.error('[Call] startCall error:', err);
+      console.error('[Call] Error:', err.message);
       setCallError(err.message || 'Ошибка звонка');
       cleanup();
     }
@@ -511,7 +485,7 @@ export default function CallManager({ currentUser }) {
       wsSend('call_answer', incoming.from, { answer });
       durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000);
     } catch (err) {
-      console.error('[Call] answerCall error:', err);
+      console.error('[Call] Error:', err.message);
       setCallError(err.message || 'Ошибка при ответе на звонок');
       cleanup();
     }
@@ -611,7 +585,7 @@ export default function CallManager({ currentUser }) {
         setCallStateSync('active');
         durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000);
       } catch (err) {
-        console.error('[Call] setRemoteDescription error:', err);
+        console.error('[Call] Error:', err.message);
         setCallError('Ошибка соединения');
         cleanup();
       }
@@ -627,7 +601,7 @@ export default function CallManager({ currentUser }) {
           iceCandidateBuffer.current.push(data.candidate);
         }
       } catch (err) {
-        console.error('[Call] ICE candidate error:', err);
+        // Silent - ICE errors are common and not critical
       }
     },
 

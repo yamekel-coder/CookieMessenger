@@ -25,7 +25,6 @@ async function connect() {
   socket.onopen = () => {
     isConnecting = false;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-    console.log('[WS] Connected, sending auth...');
     
     // Send auth token as first message
     socket.send(JSON.stringify({ type: 'auth', token }));
@@ -41,25 +40,17 @@ async function connect() {
       const parsed = JSON.parse(e.data);
       
       // Handle auth_ok response
-      if (parsed.type === 'auth_ok') {
-        console.log('[WS] Authentication successful');
-        return;
-      }
+      if (parsed.type === 'auth_ok') return;
       
       const { event, data } = parsed;
-      if (!event) {
-        console.warn('[WS] Received message without event:', parsed);
-        return;
-      }
-      
-      console.log('[WS] Received event:', event, data);
+      if (!event) return;
       
       // 1. Dispatch to all registered hook handlers
       Object.values(globalHandlers).forEach(h => h[event]?.(data));
       // 2. Also fire DOM events for components that listen via addEventListener
       window.dispatchEvent(new CustomEvent(`ws_${event}`, { detail: data }));
     } catch (err) {
-      console.error('[WS] Error parsing message:', err);
+      console.error('[WS] Error:', err.message);
     }
   };
 
@@ -67,7 +58,6 @@ async function connect() {
     isConnecting = false;
     globalWs = null;
     if (e.code === 4001) return; // auth error — don't reconnect
-    console.log('[WS] Disconnected, reconnecting in 3s...');
     reconnectTimer = setTimeout(connect, 3000);
   };
 
@@ -99,19 +89,15 @@ export function wsSend(event, to, data) {
   const state = globalWs?.readyState;
   
   if (state === WebSocket.OPEN) {
-    console.log('[WS] Sending', event, 'to', to);
     globalWs.send(msg);
   } else {
-    console.warn('[WS] Not connected (state:', state, '), queueing', event);
-    
     // For critical call signaling, try to reconnect immediately
     if (['call_offer', 'call_answer', 'call_ice'].includes(event)) {
-      console.log('[WS] Critical signaling message, attempting immediate reconnect');
       pendingQueue.push(msg);
       
       // If connecting, wait a bit
       if (state === WebSocket.CONNECTING) {
-        console.log('[WS] Already connecting, waiting...');
+        // Already connecting
       } else {
         // Force reconnect
         connect();
