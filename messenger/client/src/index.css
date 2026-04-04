@@ -4902,6 +4902,14 @@ body {
   animation: pulse-quality 2s ease-in-out infinite;
 }
 
+.call-connection-type {
+  font-size: 10px;
+  display: block;
+  margin-top: 2px;
+  color: #4caf50;
+  opacity: 0.7;
+}
+
 @keyframes pulse-quality {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }

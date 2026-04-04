@@ -117,6 +117,7 @@ export default function CallManager({ currentUser }) {
   const [callError, setCallError] = useState(null);
   const [connectionState, setConnectionState] = useState('');
   const [connectionQuality, setConnectionQuality] = useState('good'); // good, medium, poor
+  const [connectionType, setConnectionType] = useState(''); // local, p2p, relay
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const callStateRef = useRef('idle');
@@ -162,6 +163,7 @@ export default function CallManager({ currentUser }) {
     setCallDuration(0);
     setConnectionState('');
     setConnectionQuality('good');
+    setConnectionType('');
     setReconnectAttempts(0);
     setMicOn(true); setCamOn(true); setScreenOn(false);
     setRemoteUser(null);
@@ -183,7 +185,21 @@ export default function CallManager({ currentUser }) {
     // ICE candidate gathering
     conn.onicecandidate = (e) => {
       if (e.candidate) {
-        console.log('[Call] ICE candidate:', e.candidate.type, e.candidate.protocol);
+        const type = e.candidate.type; // host, srflx, relay
+        const protocol = e.candidate.protocol; // udp, tcp
+        const address = e.candidate.address || e.candidate.ip;
+        
+        console.log(`[Call] 📡 ICE candidate: ${type} (${protocol}) - ${address}`);
+        
+        // Log what type of connection we're trying
+        if (type === 'host') {
+          console.log('[Call] 🏠 Local network candidate (P2P direct)');
+        } else if (type === 'srflx') {
+          console.log('[Call] 🌐 Public IP candidate via STUN (P2P through NAT)');
+        } else if (type === 'relay') {
+          console.log('[Call] 🔄 TURN relay candidate (traffic through server)');
+        }
+        
         wsSend('call_ice', targetId, { candidate: e.candidate });
       }
     };
@@ -201,6 +217,35 @@ export default function CallManager({ currentUser }) {
       
       if (state === 'connected' || state === 'completed') {
         setReconnectAttempts(0);
+        
+        // Log which candidate pair was selected (shows connection type)
+        conn.getStats().then(stats => {
+          stats.forEach(report => {
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              const localCandidate = [...stats.values()].find(s => s.id === report.localCandidateId);
+              const remoteCandidate = [...stats.values()].find(s => s.id === report.remoteCandidateId);
+              
+              if (localCandidate && remoteCandidate) {
+                const localType = localCandidate.candidateType;
+                const remoteType = remoteCandidate.candidateType;
+                
+                console.log(`[Call] ✅ Connected using: Local=${localType}, Remote=${remoteType}`);
+                
+                if (localType === 'relay' || remoteType === 'relay') {
+                  console.log('[Call] 🔄 Using TURN relay server (traffic goes through VDS)');
+                  setConnectionType('relay');
+                } else if (localType === 'srflx' || remoteType === 'srflx') {
+                  console.log('[Call] 🌐 Using STUN P2P (direct connection through NAT)');
+                  setConnectionType('p2p');
+                } else if (localType === 'host' && remoteType === 'host') {
+                  console.log('[Call] 🏠 Using local network P2P (same network)');
+                  setConnectionType('local');
+                }
+              }
+            }
+          });
+        });
+        
         monitorConnectionQuality(conn);
       } else if (state === 'disconnected') {
         // Try to reconnect (Telegram does this)
@@ -700,6 +745,17 @@ export default function CallManager({ currentUser }) {
                 <span className="call-quality-indicator">{
                   connectionQuality === 'medium' ? '📶 Среднее качество' :
                   connectionQuality === 'poor' ? '📶 Слабое соединение' : ''
+                }</span>
+              )}
+              {connectionType && (connectionState === 'connected' || connectionState === 'completed') && (
+                <span className="call-connection-type" title={
+                  connectionType === 'local' ? 'Локальная сеть (прямое P2P)' :
+                  connectionType === 'p2p' ? 'Прямое соединение через интернет' :
+                  connectionType === 'relay' ? 'Через relay сервер' : ''
+                }>{
+                  connectionType === 'local' ? '🏠 Локальная сеть' :
+                  connectionType === 'p2p' ? '🌐 P2P' :
+                  connectionType === 'relay' ? '🔄 Relay' : ''
                 }</span>
               )}
             </div>
