@@ -67,25 +67,25 @@ function setup(server) {
 
         // Only relay whitelisted signaling events
         if (ALLOWED_SIGNALING.has(msg.event) && msg.to && Number.isInteger(msg.to)) {
+          console.log(`[WS] ${msg.event} from ${userId} to ${msg.to}`);
           // Privacy check only for INITIATING a call (call_offer)
-          // All other signaling (answer, ice, reject, end) must pass through freely
           if (msg.event === 'call_offer') {
             const db = require('./db');
             const target = db.prepare('SELECT privacy_who_can_call FROM users WHERE id = ?').get(msg.to);
-            if (target) {
-              const setting = target.privacy_who_can_call || 'everyone';
-              if (setting === 'nobody') return;
-              if (setting === 'friends') {
-                const areFriends = !!db.prepare(`
-                  SELECT 1 FROM friendships
-                  WHERE ((requester_id=? AND addressee_id=?) OR (requester_id=? AND addressee_id=?))
-                  AND status='accepted'
-                `).get(userId, msg.to, msg.to, userId);
-                if (!areFriends) return;
-              }
+            const setting = target?.privacy_who_can_call || 'everyone';
+            console.log(`[WS] call_offer: target privacy=${setting}, target online=${clients.has(msg.to)}`);
+            if (setting === 'nobody') { console.log('[WS] blocked by privacy=nobody'); return; }
+            if (setting === 'friends') {
+              const areFriends = !!db.prepare(`
+                SELECT 1 FROM friendships
+                WHERE ((requester_id=? AND addressee_id=?) OR (requester_id=? AND addressee_id=?))
+                AND status='accepted'
+              `).get(userId, msg.to, msg.to, userId);
+              if (!areFriends) { console.log('[WS] blocked by privacy=friends, not friends'); return; }
             }
           }
-          sendTo(msg.to, msg.event, { ...msg.data, from: userId });
+          const sent = sendTo(msg.to, msg.event, { ...msg.data, from: userId });
+          console.log(`[WS] ${msg.event} delivered to ${msg.to}: ${clients.has(msg.to)}`);
         }
       } catch {}
     });
