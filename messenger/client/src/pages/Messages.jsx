@@ -263,8 +263,13 @@ export default function Messages({ user, initialChat, onClearInitial }) {
         body: JSON.stringify(body),
       });
       if (res.ok) {
+        const newMsg = await res.json();
+        // Add message immediately to UI
+        setMessages(prev => [...prev, newMsg]);
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
         setText('');
         setMediaPreview(null);
+        loadConvos();
       }
     } finally {
       setSending(false);
