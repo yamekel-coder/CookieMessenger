@@ -296,7 +296,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
   return (
     <div className="messages-page">
       {/* Sidebar */}
-      <div className="msg-sidebar">
+      <div className={`msg-sidebar ${activeUser ? 'hidden' : ''}`}>
         <div className="msg-sidebar-header">
           <span>Сообщения</span>
           <button 
@@ -338,7 +338,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
       </div>
 
       {/* Chat */}
-      <div className="msg-chat">
+      <div className={`msg-chat ${!activeUser ? 'hidden' : ''}`}>
         {!activeUser ? (
           <div className="msg-chat-empty">
             <MessageSquare size={40} />
