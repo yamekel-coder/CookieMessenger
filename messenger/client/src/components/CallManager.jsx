@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useWebSocket, wsSend } from '../hooks/useWebSocket';
+import { useWebSocket, wsSend, wsReadyState } from '../hooks/useWebSocket';
 import {
   Phone, PhoneOff, Video, VideoOff,
   Mic, MicOff, Monitor, MonitorOff,
@@ -228,7 +228,7 @@ export default function CallManager({ currentUser }) {
       });
       await conn.setLocalDescription(offer);
 
-      // Wait for WS to be ready before sending offer
+      // Send offer — only if WS is open
       const sendOffer = () => {
         wsSend('call_offer', targetUser.id, {
           offer,
@@ -239,18 +239,23 @@ export default function CallManager({ currentUser }) {
         });
       };
 
-      // Check if WS is connected, retry up to 3 times
+      // Retry sending offer up to 5 times with 500ms interval
+      let sent = false;
       let attempts = 0;
       const trySend = () => {
+        if (sent || callStateRef.current !== 'calling') return;
         attempts++;
-        try {
+        if (wsReadyState() === 1) { // WebSocket.OPEN = 1
           sendOffer();
-        } catch (e) {
-          if (attempts < 3) setTimeout(trySend, 1000);
+          sent = true;
+        } else if (attempts < 10) {
+          setTimeout(trySend, 500);
+        } else {
+          setCallError('Нет соединения. Попробуйте снова.');
+          cleanup();
         }
       };
-      // Small delay to ensure WS is stable after any reconnect
-      setTimeout(trySend, 300);
+      trySend();
 
     } catch (err) {
       console.error('[Call] startCall error:', err);
