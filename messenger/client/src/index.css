@@ -2052,7 +2052,8 @@ body {
 .msg-row-theirs { justify-content: flex-start; }
 
 .msg-bubble {
-  max-width: 75%;
+  max-width: 65%;
+  min-width: 120px;
   padding: 0.55rem 0.85rem;
   border-radius: 14px;
   display: flex;
@@ -4152,7 +4153,8 @@ body {
 
   /* Wider message bubbles on mobile */
   .msg-bubble {
-    max-width: 85%;
+    max-width: 70%;
+    min-width: 140px;
   }
 }
 
