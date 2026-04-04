@@ -1893,6 +1893,24 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.msg-search-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+.msg-search-toggle:hover {
+  color: #aaa;
+  background: #1a1a1a;
 }
 
 .msg-convo-list {
@@ -4421,6 +4439,28 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  max-height: 200px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease, border-bottom-width 0.3s ease;
+}
+
+/* Hidden state on mobile */
+@media (max-width: 768px) {
+  .msg-search-toggle {
+    display: flex;
+  }
+  
+  .msg-search-wrap {
+    max-height: 0;
+    padding: 0 0.75rem;
+    border-bottom-width: 0;
+  }
+  
+  .msg-search-wrap.visible {
+    max-height: 200px;
+    padding: 0.5rem 0.75rem;
+    border-bottom-width: 1px;
+  }
 }
 .msg-search-icon { color: #444; flex-shrink: 0; }
 .msg-search-input {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, ArrowLeft, MessageSquare, Image, Video, X, Phone, Video as VideoIcon, Smile, Search } from 'lucide-react';
+import { Send, ArrowLeft, MessageSquare, Image, Video, X, Phone, Video as VideoIcon, Smile, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import EmojiPicker from '../components/EmojiPicker';
 
 function api(path, opts = {}) {
@@ -162,6 +162,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
   const [mediaPreview, setMediaPreview] = useState(null); // { src, type, file }
   const [showPicker, setShowPicker] = useState(false);
   const [convoSearch, setConvoSearch] = useState('');
+  const [searchVisible, setSearchVisible] = useState(false);
   const bottomRef = useRef();
   const inputRef = useRef();
   const fileRef = useRef();
@@ -296,8 +297,17 @@ export default function Messages({ user, initialChat, onClearInitial }) {
     <div className="messages-page">
       {/* Sidebar */}
       <div className="msg-sidebar">
-        <div className="msg-sidebar-header"><span>Сообщения</span></div>
-        <div className="msg-search-wrap">
+        <div className="msg-sidebar-header">
+          <span>Сообщения</span>
+          <button 
+            className="msg-search-toggle" 
+            onClick={() => setSearchVisible(v => !v)}
+            title={searchVisible ? 'Скрыть поиск' : 'Показать поиск'}
+          >
+            {searchVisible ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
+        <div className={`msg-search-wrap ${searchVisible ? 'visible' : ''}`}>
           <Search size={14} className="msg-search-icon" />
           <input
             className="msg-search-input"
