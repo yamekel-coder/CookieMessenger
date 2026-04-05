@@ -11,10 +11,10 @@ const ROLE_HIERARCHY = ['user', 'vip', 'moderator', 'admin', 'owner'];
 
 const ROLE_PERMISSIONS = {
   user:      [],
-  vip:       ['post_images', 'post_videos', 'post_polls', 'custom_accent'],
+  vip:       ['animated_name', 'profile_music', 'custom_accent'],
   moderator: ['post_images', 'post_videos', 'post_polls', 'custom_accent', 'delete_posts', 'ban_users'],
   admin:     ['post_images', 'post_videos', 'post_polls', 'custom_accent', 'delete_posts', 'ban_users', 'manage_roles', 'broadcast'],
-  owner:     ['post_images', 'post_videos', 'post_polls', 'custom_accent', 'delete_posts', 'ban_users', 'manage_roles', 'broadcast', 'delete_users', 'owner'],
+  owner:     ['post_images', 'post_videos', 'post_polls', 'custom_accent', 'delete_posts', 'ban_users', 'manage_roles', 'broadcast', 'delete_users', 'owner', 'animated_name', 'profile_music'],
 };
 
 const ROLE_LABELS = {
@@ -38,10 +38,30 @@ function isOwner(req) {
   return u?.email === ADMIN_EMAIL;
 }
 
+// Get all roles for a user
+function getUserRoles(userId) {
+  const roles = db.prepare('SELECT role FROM user_roles WHERE user_id = ?').all(userId);
+  return roles.map(r => r.role);
+}
+
+// Get all permissions for a user (combined from all roles)
+function getUserPermissions(userId) {
+  const roles = getUserRoles(userId);
+  const perms = new Set();
+  roles.forEach(role => {
+    (ROLE_PERMISSIONS[role] || []).forEach(p => perms.add(p));
+  });
+  return Array.from(perms);
+}
+
+// Check if user has specific permission
+function hasPermission(userId, permission) {
+  const perms = getUserPermissions(userId);
+  return perms.includes(permission);
+}
+
 function canManageRoles(req) {
-  const u = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id);
-  const role = u?.role || 'user';
-  return ROLE_PERMISSIONS[role]?.includes('manage_roles') || false;
+  return hasPermission(req.user.id, 'manage_roles') || isOwner(req);
 }
 
 function roleRank(role) {
@@ -67,19 +87,27 @@ router.get('/users', auth, (req, res) => {
 
   const users = db.prepare(`
     SELECT id, username, display_name, avatar, accent_color, email,
-           role, is_banned, created_at
+           is_banned, created_at
     FROM users ORDER BY created_at DESC
   `).all();
 
-  res.json(users.map(u => ({
-    ...u,
-    role: u.role || 'user',
-    roleLabel: ROLE_LABELS[u.role || 'user'],
-    roleColor: ROLE_COLORS[u.role || 'user'],
-  })));
+  res.json(users.map(u => {
+    const roles = getUserRoles(u.id);
+    const highestRole = roles.length > 0 
+      ? roles.reduce((highest, r) => roleRank(r) > roleRank(highest) ? r : highest, 'user')
+      : 'user';
+    
+    return {
+      ...u,
+      roles,
+      role: highestRole, // for display
+      roleLabel: ROLE_LABELS[highestRole],
+      roleColor: ROLE_COLORS[highestRole],
+    };
+  }));
 });
 
-// ── POST /api/roles/assign — assign role to user ──────────────────────────────
+// ── POST /api/roles/assign — toggle role for user ────────────────────────────
 router.post('/assign', auth, (req, res) => {
   if (!canManageRoles(req) && !isOwner(req))
     return res.status(403).json({ error: 'Нет доступа' });
@@ -89,30 +117,58 @@ router.post('/assign', auth, (req, res) => {
     return res.status(400).json({ error: 'Неверная роль' });
 
   // Can't assign role higher than your own
-  const myRole = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)?.role || 'user';
-  const myRank = isOwner(req) ? 999 : roleRank(myRole);
-  if (roleRank(role) >= myRank && !isOwner(req))
+  const myRoles = getUserRoles(req.user.id);
+  const myHighestRank = isOwner(req) ? 999 : Math.max(...myRoles.map(roleRank), 0);
+  if (roleRank(role) >= myHighestRank && !isOwner(req))
     return res.status(403).json({ error: 'Нельзя назначить роль выше своей' });
 
-  // Can't change owner's role
-  const target = db.prepare('SELECT id, email, role FROM users WHERE id = ?').get(userId);
+  // Can't change owner's roles
+  const target = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId);
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
   if (target.email === ADMIN_EMAIL && !isOwner(req))
-    return res.status(403).json({ error: 'Нельзя изменить роль владельца' });
+    return res.status(403).json({ error: 'Нельзя изменить роли владельца' });
 
-  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
-  res.json({ ok: true, role, roleLabel: ROLE_LABELS[role], roleColor: ROLE_COLORS[role] });
+  // Toggle role (add if not exists, remove if exists)
+  const existing = db.prepare('SELECT id FROM user_roles WHERE user_id = ? AND role = ?').get(userId, role);
+  
+  if (existing) {
+    // Remove role
+    db.prepare('DELETE FROM user_roles WHERE user_id = ? AND role = ?').run(userId, role);
+  } else {
+    // Add role
+    db.prepare('INSERT INTO user_roles (user_id, role) VALUES (?, ?)').run(userId, role);
+  }
+
+  const roles = getUserRoles(userId);
+  const highestRole = roles.length > 0 
+    ? roles.reduce((highest, r) => roleRank(r) > roleRank(highest) ? r : highest, 'user')
+    : 'user';
+
+  res.json({ 
+    ok: true, 
+    roles,
+    role: highestRole,
+    roleLabel: ROLE_LABELS[highestRole], 
+    roleColor: ROLE_COLORS[highestRole] 
+  });
 });
 
-// ── GET /api/roles/me — get my role and permissions ───────────────────────────
+// ── GET /api/roles/me — get my roles and permissions ─────────────────────────
 router.get('/me', auth, (req, res) => {
-  const u = db.prepare('SELECT role, email FROM users WHERE id = ?').get(req.user.id);
-  const role = (u?.email === ADMIN_EMAIL) ? 'owner' : (u?.role || 'user');
+  const u = db.prepare('SELECT email FROM users WHERE id = ?').get(req.user.id);
+  const roles = (u?.email === ADMIN_EMAIL) ? ['owner'] : getUserRoles(req.user.id);
+  const permissions = (u?.email === ADMIN_EMAIL) ? ROLE_PERMISSIONS.owner : getUserPermissions(req.user.id);
+  
+  const highestRole = roles.length > 0 
+    ? roles.reduce((highest, r) => roleRank(r) > roleRank(highest) ? r : highest, 'user')
+    : 'user';
+
   res.json({
-    role,
-    roleLabel: ROLE_LABELS[role],
-    roleColor: ROLE_COLORS[role],
-    permissions: ROLE_PERMISSIONS[role],
+    roles,
+    role: highestRole,
+    roleLabel: ROLE_LABELS[highestRole],
+    roleColor: ROLE_COLORS[highestRole],
+    permissions,
   });
 });
 
@@ -120,3 +176,6 @@ module.exports = router;
 module.exports.ROLE_LABELS = ROLE_LABELS;
 module.exports.ROLE_COLORS = ROLE_COLORS;
 module.exports.ROLE_PERMISSIONS = ROLE_PERMISSIONS;
+module.exports.getUserRoles = getUserRoles;
+module.exports.getUserPermissions = getUserPermissions;
+module.exports.hasPermission = hasPermission;

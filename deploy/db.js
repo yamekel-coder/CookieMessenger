@@ -48,6 +48,9 @@ migrate('privacy_who_can_message', "TEXT DEFAULT 'friends'");
 migrate('privacy_who_can_call',    "TEXT DEFAULT 'friends'");
 migrate('privacy_who_can_add',     "TEXT DEFAULT 'everyone'");
 migrate('privacy_show_online',     'INTEGER DEFAULT 1');
+// VIP features
+migrate('animated_name', 'TEXT');
+migrate('profile_music', 'TEXT');
 
 // Posts
 db.exec(`
@@ -169,6 +172,31 @@ db.exec(`
     UNIQUE(follower_id, following_id),
     FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+// Post views (unique per user)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_views (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+// User roles (multiple roles per user)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, role),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )
 `);
 

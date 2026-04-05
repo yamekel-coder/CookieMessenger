@@ -360,8 +360,19 @@ export default function Profile({ user, onUpdate, onLogout }) {
 
                 <div className="profile-title-row">
                   <div>
-                    <h1 className="profile-name" style={{ color: accent }}>{displayName}</h1>
+                    <h1 
+                      className="profile-name" 
+                      style={user.animated_name 
+                        ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+                        : { color: accent }
+                      }
+                    >
+                      {displayName}
+                    </h1>
                     <p className="profile-username">@{user.username}</p>
+                    {user.profile_music && (
+                      <audio controls className="profile-music-player" src={user.profile_music} />
+                    )}
                   </div>
                   {!editing
                     ? <button className="btn-edit-profile" onClick={() => setEditing(true)}>

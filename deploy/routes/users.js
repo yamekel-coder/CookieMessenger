@@ -13,9 +13,13 @@ router.get('/online', auth, (req, res) => {
 // GET /api/users/:username — public profile
 router.get('/:username', auth, (req, res) => {
   const user = db.prepare(
-    'SELECT id, username, display_name, bio, avatar, banner, accent_color, created_at FROM users WHERE username = ?'
+    'SELECT id, username, display_name, bio, avatar, banner, accent_color, animated_name, profile_music, created_at, privacy_public_profile FROM users WHERE username = ?'
   ).get(req.params.username);
   if (!user) return res.status(404).json({ error: 'Не найден' });
+
+  // Check if profile is private (only owner can see)
+  if (!user.privacy_public_profile && user.id !== req.user.id)
+    return res.status(403).json({ error: 'Профиль закрыт' });
 
   const followers = db.prepare('SELECT COUNT(*) as c FROM follows WHERE following_id = ?').get(user.id).c;
   const following = db.prepare('SELECT COUNT(*) as c FROM follows WHERE follower_id = ?').get(user.id).c;

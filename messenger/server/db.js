@@ -187,6 +187,22 @@ db.exec(`
   )
 `);
 
+// User roles (multiple roles per user)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, role),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+// VIP features
+migrate('animated_name', 'TEXT'); // gradient CSS for animated name
+migrate('profile_music', 'TEXT'); // URL to music file
+
 // Groups
 db.exec(`
   CREATE TABLE IF NOT EXISTS groups (

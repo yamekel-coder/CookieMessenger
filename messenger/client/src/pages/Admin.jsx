@@ -439,7 +439,7 @@ function RolesTab({ accent }) {
     if (res.ok) {
       const data = await res.json();
       setUsers(prev => prev.map(u => u.id === userId
-        ? { ...u, role: data.role, roleLabel: data.roleLabel, roleColor: data.roleColor }
+        ? { ...u, roles: data.roles, role: data.role, roleLabel: data.roleLabel, roleColor: data.roleColor }
         : u
       ));
       showFlash('Роль обновлена');
@@ -515,21 +515,30 @@ function RolesTab({ accent }) {
                   <span className="adm-role-current" style={{ color: u.roleColor, borderColor: u.roleColor }}>
                     <Crown size={11} /> {u.roleLabel}
                   </span>
+                  {u.roles && u.roles.length > 1 && (
+                    <span className="adm-role-count">+{u.roles.length - 1}</span>
+                  )}
                 </td>
                 <td>
                   <div className="adm-role-select-row">
-                    {roles.map(r => (
-                      <button
-                        key={r.id}
-                        className={`adm-role-btn ${u.role === r.id ? 'active' : ''}`}
-                        style={u.role === r.id ? { background: r.color + '22', borderColor: r.color, color: r.color } : { borderColor: r.color + '55', color: r.color + '99' }}
-                        onClick={() => u.role !== r.id && handleAssign(u.id, r.id)}
-                        disabled={assigning[u.id] || u.role === r.id}
-                        title={r.label}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
+                    {roles.map(r => {
+                      const hasRole = u.roles?.includes(r.id);
+                      return (
+                        <button
+                          key={r.id}
+                          className={`adm-role-btn ${hasRole ? 'active' : ''}`}
+                          style={hasRole 
+                            ? { background: r.color + '22', borderColor: r.color, color: r.color } 
+                            : { borderColor: r.color + '55', color: r.color + '99' }
+                          }
+                          onClick={() => handleAssign(u.id, r.id)}
+                          disabled={assigning[u.id]}
+                          title={r.label}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </td>
               </tr>
@@ -551,6 +560,8 @@ function RolesTab({ accent }) {
                   <div key={p} className="adm-perm-item">
                     <CheckCircle size={11} style={{ color: r.color }} />
                     <span>{{ 
+                      animated_name: 'Анимированный ник',
+                      profile_music: 'Музыка на профиле',
                       post_images: 'Публиковать фото',
                       post_videos: 'Публиковать видео',
                       post_polls: 'Создавать опросы',

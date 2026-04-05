@@ -422,7 +422,29 @@ body {
 }
 
 .profile-name { font-size: 1.4rem; font-weight: 700; transition: color 0.3s; line-height: 1.2; }
+.profile-name[style*="background"] {
+  background-size: 200% auto;
+  animation: gradientShift 3s linear infinite;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
 .profile-username { font-size: 0.82rem; color: #444; margin-top: 0.2rem; }
+
+.profile-music-player {
+  margin-top: 0.75rem;
+  width: 100%;
+  max-width: 300px;
+  height: 32px;
+  border-radius: 16px;
+  outline: none;
+}
+.profile-music-player::-webkit-media-controls-panel {
+  background: #1a1a1a;
+  border-radius: 16px;
+}
 
 .btn-edit-profile {
   display: flex; align-items: center; gap: 0.4rem;
@@ -2376,6 +2398,10 @@ body {
   font-weight: 700;
   margin: 0;
 }
+.up-name[style*="background"] {
+  background-size: 200% auto;
+  animation: gradientShift 3s linear infinite;
+}
 
 .up-username {
   font-size: 0.8rem;
@@ -3749,6 +3775,19 @@ body {
   border: 1px solid;
   border-radius: 20px;
   font-size: 12px;
+  font-weight: 600;
+}
+.adm-role-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  padding: 2px 6px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  font-size: 10px;
+  color: #666;
   font-weight: 600;
 }
 .adm-role-select-row {

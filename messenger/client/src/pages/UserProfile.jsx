@@ -168,9 +168,20 @@ export default function UserProfile({ username, currentUser, onBack, onOpenChat 
         <div className="up-header-info">
           <div className="up-name-row">
             <div>
-              <h2 className="up-name" style={{ color: accent }}>{profile.display_name || profile.username}</h2>
+              <h2 
+                className="up-name" 
+                style={profile.animated_name 
+                  ? { background: profile.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+                  : { color: accent }
+                }
+              >
+                {profile.display_name || profile.username}
+              </h2>
               <span className="up-username">@{profile.username}</span>
               {isOnline && <span className="up-online-label">онлайн</span>}
+              {profile.profile_music && (
+                <audio controls className="profile-music-player" src={profile.profile_music} />
+              )}
             </div>
             {!isMe && (
               <div className="up-actions">
