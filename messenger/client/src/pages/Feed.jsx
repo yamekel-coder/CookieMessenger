@@ -135,7 +135,7 @@ export default function Feed({ user, onOpenChat }) {
           </div>
         )}
 
-        <div className="feed-list">
+        <div className="feed-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           {posts.map(post => (
             <PostCard
               key={post.id}
