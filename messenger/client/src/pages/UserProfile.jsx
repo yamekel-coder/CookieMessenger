@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, UserPlus, UserCheck, Users, FileText, MessageSquare, Shield } from 'lucide-react';
 import PostCard from '../components/PostCard';
+import ProfileMusicPlayer from '../components/ProfileMusicPlayer';
 
 function Avatar({ user, size = 80 }) {
   const accent = user?.accent_color || '#fff';
@@ -179,9 +180,6 @@ export default function UserProfile({ username, currentUser, onBack, onOpenChat 
               </h2>
               <span className="up-username">@{profile.username}</span>
               {isOnline && <span className="up-online-label">онлайн</span>}
-              {profile.profile_music && (
-                <audio controls className="profile-music-player" src={profile.profile_music} />
-              )}
             </div>
             {!isMe && (
               <div className="up-actions">
@@ -249,6 +247,10 @@ export default function UserProfile({ username, currentUser, onBack, onOpenChat 
           {following.length === 0 && <p className="up-empty">Нет подписок</p>}
           {following.map(u => <UserRow key={u.id} user={u} isOnline={onlineUsers.has(u.id)} />)}
         </div>
+      )}
+
+      {profile.profile_music && (
+        <ProfileMusicPlayer src={profile.profile_music} username={profile.username} accent={accent} />
       )}
     </div>
   );

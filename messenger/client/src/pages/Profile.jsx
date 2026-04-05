@@ -10,6 +10,7 @@ import ImageCropper from '../components/ImageCropper';
 import ChangelogModal from '../components/ChangelogModal';
 import CallManager from '../components/CallManager';
 import PostCard from '../components/PostCard';
+import ProfileMusicPlayer from '../components/ProfileMusicPlayer';
 import UserProfile from './UserProfile';
 import { validateFileSize } from '../utils/imageCompressor';
 import Admin from './Admin';
@@ -495,9 +496,6 @@ export default function Profile({ user, onUpdate, onLogout }) {
                       {displayName}
                     </h1>
                     <p className="profile-username">@{user.username}</p>
-                    {user.profile_music && (
-                      <audio controls className="profile-music-player" src={user.profile_music} />
-                    )}
                   </div>
                   {!editing
                     ? <button className="btn-edit-profile" onClick={() => setEditing(true)}>
@@ -880,6 +878,10 @@ export default function Profile({ user, onUpdate, onLogout }) {
       )}
 
       {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+
+      {user.profile_music && tab === 'profile' && (
+        <ProfileMusicPlayer src={user.profile_music} username={user.username} accent={accent} />
+      )}
 
       {/* Global call manager — always mounted so it can receive incoming calls */}
       <CallManager currentUser={user} />
