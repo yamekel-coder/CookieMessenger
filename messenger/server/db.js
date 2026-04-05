@@ -174,6 +174,19 @@ db.exec(`
   )
 `);
 
+// Post views (unique per user)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS post_views (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
 // Groups
 db.exec(`
   CREATE TABLE IF NOT EXISTS groups (

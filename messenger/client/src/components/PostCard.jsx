@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Trash2, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Send, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 
 function timeAgo(str) {
   const diff = (Date.now() - new Date(str + 'Z')) / 1000;
@@ -181,6 +181,9 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
   const [comments, setComments] = useState(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(post.commentsCount || 0);
+  const [viewCount, setViewCount] = useState(post.views || 0);
+  const [viewRegistered, setViewRegistered] = useState(false);
+  const cardRef = useRef(null);
   const accent = post.accent_color || '#fff';
 
   // Listen for real-time comments from OTHER users only
@@ -196,6 +199,50 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
     window.addEventListener('ws_new_comment', handler);
     return () => window.removeEventListener('ws_new_comment', handler);
   }, [post.id, currentUserId]);
+
+  // Register view when post enters viewport (once per session)
+  useEffect(() => {
+    // Check localStorage to prevent duplicate views on page refresh
+    const viewedKey = `post_viewed_${post.id}`;
+    const alreadyViewed = localStorage.getItem(viewedKey);
+    
+    if (alreadyViewed || viewRegistered) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !viewRegistered) {
+            // Post is visible, register view
+            setViewRegistered(true);
+            localStorage.setItem(viewedKey, 'true');
+            
+            fetch(`/api/feed/${post.id}/view`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            })
+              .then(r => r.json())
+              .then(data => {
+                if (data.views !== undefined) {
+                  setViewCount(data.views);
+                }
+              })
+              .catch(() => {});
+          }
+        });
+      },
+      { threshold: 0.5 } // 50% of post must be visible
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, [post.id, viewRegistered]);
 
   const toggleComments = async () => {
     if (!showComments && comments === null) {
@@ -235,7 +282,7 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
   };
 
   return (
-    <div className="post-card">
+    <div className="post-card" ref={cardRef}>
       {/* Header */}
       <div className="post-header">
         <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -296,6 +343,10 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
           <span>{commentsCount}</span>
           {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
+        <div className="post-views">
+          <Eye size={16} />
+          <span>{viewCount}</span>
+        </div>
       </div>
 
       {/* Comments */}

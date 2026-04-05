@@ -41,6 +41,7 @@ function enrichPost(post, userId) {
   const likes = db.prepare('SELECT COUNT(*) as c FROM likes WHERE post_id = ?').get(post.id).c;
   const liked = !!db.prepare('SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?').get(post.id, userId);
   const commentsCount = db.prepare('SELECT COUNT(*) as c FROM comments WHERE post_id = ?').get(post.id).c;
+  const views = db.prepare('SELECT COUNT(*) as c FROM post_views WHERE post_id = ?').get(post.id).c;
 
   let poll = null;
   if (post.type === 'poll') {
@@ -57,7 +58,7 @@ function enrichPost(post, userId) {
     }));
   }
 
-  return { ...post, likes, liked, commentsCount, poll };
+  return { ...post, likes, liked, commentsCount, views, poll };
 }
 
 // ─── Feed ────────────────────────────────────────────────────────────────────
@@ -236,6 +237,27 @@ router.post('/:id/like', auth, (req, res) => {
   ws.broadcast('like_update', { postId: parseInt(req.params.id), liked: !liked, count, actorId: req.user.id });
 
   res.json({ liked: !liked, count });
+});
+
+// Register post view (unique per user)
+router.post('/:id/view', auth, (req, res) => {
+  const postId = parseInt(req.params.id);
+  if (isNaN(postId)) return res.status(400).json({ error: 'Неверный ID' });
+  
+  // Check if post exists
+  const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(postId);
+  if (!post) return res.status(404).json({ error: 'Пост не найден' });
+  
+  // Insert or ignore if already viewed (UNIQUE constraint)
+  try {
+    db.prepare('INSERT INTO post_views (post_id, user_id) VALUES (?, ?)').run(postId, req.user.id);
+  } catch (err) {
+    // Already viewed - ignore
+  }
+  
+  // Return current view count
+  const views = db.prepare('SELECT COUNT(*) as c FROM post_views WHERE post_id = ?').get(postId).c;
+  res.json({ views });
 });
 
 router.get('/:id/comments', auth, (req, res) => {

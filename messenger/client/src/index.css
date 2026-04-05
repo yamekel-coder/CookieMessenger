@@ -1321,6 +1321,16 @@ body {
 .post-action:hover { background: #161616; color: #888; }
 .post-action-liked { color: inherit; }
 
+.post-views {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  color: #444;
+  font-size: 0.82rem;
+  margin-left: auto;
+}
+
 /* ── Comments ── */
 .post-comments {
   margin-top: 0.6rem;
