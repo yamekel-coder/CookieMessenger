@@ -1356,6 +1356,7 @@ body {
 
 .post-meta { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; }
 .post-name { font-size: 0.9rem; font-weight: 600; transition: color 0.3s; }
+.post-name-row { display: flex; align-items: center; gap: 3px; }
 .post-name.gradient-name {
   background-size: 200% auto;
   animation: gradientShift 3s linear infinite;
@@ -2373,6 +2374,15 @@ body {
 
 /* Edited label */
 .msg-edited { font-size: 0.65rem; opacity: 0.5; }
+
+/* Verified badge */
+.verified-badge {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+.verified-name-row { display: inline-flex; align-items: center; gap: 3px; }
 
 /* Deleted bubble */
 .msg-bubble-deleted { opacity: 0.5; font-style: italic; }

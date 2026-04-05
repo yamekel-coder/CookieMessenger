@@ -93,7 +93,7 @@ router.get('/users', auth, adminOnly, (req, res) => {
 
   const users = db.prepare(`
     SELECT u.id, u.username, u.email, u.display_name, u.avatar, u.accent_color,
-           u.is_banned, u.ban_reason, u.created_at,
+           u.is_banned, u.ban_reason, u.created_at, u.verified,
            (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as posts_count,
            (SELECT COUNT(*) FROM messages WHERE sender_id = u.id) as msgs_count,
            (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count
@@ -209,6 +209,15 @@ router.post('/broadcast', auth, adminOnly, (req, res) => {
   });
 
   res.json({ ok: true, sent: allUsers.length });
+});
+
+// ── POST /api/admin/users/:id/verify — toggle verified badge ─────────────────
+router.post('/users/:id/verify', auth, adminOnly, (req, res) => {
+  const target = db.prepare('SELECT id, verified FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
+  const newVal = target.verified ? 0 : 1;
+  db.prepare('UPDATE users SET verified = ? WHERE id = ?').run(newVal, target.id);
+  res.json({ ok: true, verified: newVal });
 });
 
 module.exports = router;

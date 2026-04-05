@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Trash2, Send, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import VerifiedBadge from './VerifiedBadge';
 
 function timeAgo(str) {
   const diff = (Date.now() - new Date(str + 'Z')) / 1000;
@@ -290,15 +291,18 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
           {post.isOnline && <span className="post-online-dot" />}
         </div>
         <div className="post-meta">
-          <span
-            className={`post-name${post.animated_name ? ' gradient-name' : ''}`}
-            style={post.animated_name
-              ? { background: post.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent', cursor: onUserClick ? 'pointer' : 'default' }
-              : { color: accent, cursor: onUserClick ? 'pointer' : 'default' }
-            }
-            onClick={() => onUserClick?.(post.username)}
-          >
-            {post.display_name || post.username}
+          <span className="post-name-row">
+            <span
+              className={`post-name${post.animated_name ? ' gradient-name' : ''}`}
+              style={post.animated_name
+                ? { background: post.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent', cursor: onUserClick ? 'pointer' : 'default' }
+                : { color: accent, cursor: onUserClick ? 'pointer' : 'default' }
+              }
+              onClick={() => onUserClick?.(post.username)}
+            >
+              {post.display_name || post.username}
+            </span>
+            {post.verified ? <VerifiedBadge size={13} /> : null}
           </span>
           <span className="post-username">@{post.username} · {timeAgo(post.created_at)}</span>
         </div>
@@ -366,14 +370,17 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
               <Avatar user={c} size={28} />
               <div className="comment-body">
                 <div className="comment-header">
-                  <span
-                    className={`comment-name${c.animated_name ? ' gradient-name' : ''}`}
-                    style={c.animated_name
-                      ? { background: c.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
-                      : { color: c.accent_color || '#fff' }
-                    }
-                  >
-                    {c.display_name || c.username}
+                  <span className="verified-name-row">
+                    <span
+                      className={`comment-name${c.animated_name ? ' gradient-name' : ''}`}
+                      style={c.animated_name
+                        ? { background: c.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
+                        : { color: c.accent_color || '#fff' }
+                      }
+                    >
+                      {c.display_name || c.username}
+                    </span>
+                    {c.verified ? <VerifiedBadge size={12} /> : null}
                   </span>
                   <span className="comment-time">{timeAgo(c.created_at)}</span>
                 </div>

@@ -13,7 +13,7 @@ router.get('/online', auth, (req, res) => {
 // GET /api/users/:username — public profile
 router.get('/:username', auth, (req, res) => {
   const user = db.prepare(
-    'SELECT id, username, display_name, bio, avatar, banner, accent_color, animated_name, profile_music, created_at, privacy_public_profile FROM users WHERE username = ?'
+    'SELECT id, username, display_name, bio, avatar, banner, accent_color, animated_name, profile_music, verified, created_at, privacy_public_profile FROM users WHERE username = ?'
   ).get(req.params.username);
   if (!user) return res.status(404).json({ error: 'Не найден' });
 
@@ -39,7 +39,7 @@ router.get('/:username/posts', auth, (req, res) => {
   const offset = (page - 1) * limit;
 
   const posts = db.prepare(`
-    SELECT p.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+    SELECT p.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.user_id = ?
     ORDER BY p.created_at DESC LIMIT ? OFFSET ?

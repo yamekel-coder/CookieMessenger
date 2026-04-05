@@ -205,6 +205,7 @@ db.exec(`
 // VIP features
 migrate('animated_name', 'TEXT'); // gradient CSS for animated name
 migrate('profile_music', 'TEXT'); // URL to music file
+migrate('verified', 'INTEGER DEFAULT 0'); // blue verified badge
 
 // Groups
 db.exec(`

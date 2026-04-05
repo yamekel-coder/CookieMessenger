@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, UserPlus, UserCheck, UserX, Users, Clock, Check, X } from 'lucide-react';
+import VerifiedBadge from '../components/VerifiedBadge';
 
 function api(path, opts = {}) {
   return fetch(path, {
@@ -37,13 +38,16 @@ function FriendCard({ user, friendship, onAction, onMessage }) {
     <div className="fr-card">
       <Avatar user={user} />
       <div className="fr-card-info">
-        <span
-          className={`fr-card-name${user.animated_name ? ' gradient-name' : ''}`}
-          style={user.animated_name
-            ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
-            : { color: accent }
-          }
-        >{name}</span>
+        <span className="verified-name-row">
+          <span
+            className={`fr-card-name${user.animated_name ? ' gradient-name' : ''}`}
+            style={user.animated_name
+              ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
+              : { color: accent }
+            }
+          >{name}</span>
+          {user.verified ? <VerifiedBadge size={13} /> : null}
+        </span>
         <span className="fr-card-username">@{user.username}</span>
         {user.bio && <span className="fr-card-bio">{user.bio}</span>}
       </div>

@@ -70,7 +70,7 @@ router.get('/', auth, (req, res) => {
   const offset = (page - 1) * limit;
 
   const posts = db.prepare(`
-    SELECT p.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+    SELECT p.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified
     FROM posts p JOIN users u ON u.id = p.user_id
     ORDER BY p.created_at DESC LIMIT ? OFFSET ?
   `).all(limit, offset);
@@ -105,7 +105,7 @@ router.post('/', auth, validateLengths({ content: 2000 }), (req, res) => {
   parseMentions(content).forEach(uid => notify(uid, req.user.id, 'mention', postId));
 
   const post = db.prepare(`
-    SELECT p.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+    SELECT p.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified
     FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ?
   `).get(postId);
 
@@ -270,7 +270,7 @@ router.post('/:id/view', auth, (req, res) => {
 
 router.get('/:id/comments', auth, (req, res) => {
   const comments = db.prepare(`
-    SELECT c.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+    SELECT c.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified
     FROM comments c JOIN users u ON u.id = c.user_id
     WHERE c.post_id = ? ORDER BY c.created_at ASC
   `).all(req.params.id);
@@ -294,7 +294,7 @@ router.post('/:id/comments', auth, validateLengths({ content: 1000 }), (req, res
   parseMentions(content).forEach(uid => notify(uid, req.user.id, 'mention', post.id, commentId));
 
   const comment = db.prepare(`
-    SELECT c.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+    SELECT c.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified
     FROM comments c JOIN users u ON u.id = c.user_id WHERE c.id = ?
   `).get(commentId);
 

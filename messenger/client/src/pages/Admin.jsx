@@ -120,6 +120,15 @@ function UsersTab({ accent }) {
     else showFlash('Ошибка', false);
   };
 
+  const handleVerify = async (u) => {
+    const res = await api(`/api/admin/users/${u.id}/verify`, { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      showFlash(data.verified ? `@${u.username} верифицирован ✓` : `Верификация снята с @${u.username}`);
+      load(page);
+    } else showFlash('Ошибка', false);
+  };
+
   return (
     <div className="adm-tab-content">
       {flash && <div className={`adm-flash ${flash.ok ? 'adm-flash-ok' : 'adm-flash-err'}`}>{flash.msg}</div>}
@@ -196,6 +205,17 @@ function UsersTab({ accent }) {
                           <Ban size={14} />
                         </button>
                     }
+                    <button
+                      className="adm-action-btn"
+                      onClick={() => handleVerify(u)}
+                      title={u.verified ? 'Снять верификацию' : 'Верифицировать'}
+                      style={{ color: u.verified ? '#1d9bf0' : '#444' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="11" fill={u.verified ? '#1d9bf0' : 'none'} stroke={u.verified ? '#1d9bf0' : '#666'} strokeWidth="2"/>
+                        <path d="M9.5 16.5L5.5 12.5L6.91 11.09L9.5 13.67L17.09 6.08L18.5 7.5L9.5 16.5Z" fill={u.verified ? 'white' : '#666'}/>
+                      </svg>
+                    </button>
                     <button className="adm-action-btn adm-action-delete" onClick={() => handleDelete(u)} title="Удалить аккаунт">
                       <Trash2 size={14} />
                     </button>

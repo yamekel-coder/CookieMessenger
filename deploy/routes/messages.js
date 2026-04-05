@@ -86,7 +86,7 @@ router.get('/:userId', auth, (req, res) => {
   ws.sendTo(otherId, 'read_update', { readerId: req.user.id });
 
   const msgs = db.prepare(`
-    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name,
+    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified,
       r.content as reply_content, r.sender_id as reply_sender_id,
       ru.display_name as reply_display_name, ru.username as reply_username
     FROM messages m JOIN users u ON u.id = m.sender_id
@@ -127,7 +127,7 @@ router.post('/:userId', auth, validateLengths({ content: 2000 }), (req, res) => 
   ).run(req.user.id, receiverId, content?.trim() || null, media || null, media_type || null, replyId);
 
   const msg = db.prepare(`
-    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name,
+    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name, u.verified,
       r.content as reply_content, r.sender_id as reply_sender_id,
       ru.display_name as reply_display_name, ru.username as reply_username
     FROM messages m JOIN users u ON u.id = m.sender_id

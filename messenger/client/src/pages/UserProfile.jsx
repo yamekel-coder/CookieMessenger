@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, UserPlus, UserCheck, Users, FileText, MessageSquare, Shield } from 'lucide-react';
 import PostCard from '../components/PostCard';
 import ProfileMusicPlayer from '../components/ProfileMusicPlayer';
+import VerifiedBadge from '../components/VerifiedBadge';
 
 function Avatar({ user, size = 80 }) {
   const accent = user?.accent_color || '#fff';
@@ -194,6 +195,7 @@ export default function UserProfile({ username, currentUser, onBack, onOpenChat 
           >
             {profile.display_name || profile.username}
           </h2>
+          {profile.verified ? <VerifiedBadge size={18} /> : null}
           <span className="up-username">@{profile.username}</span>
           {isOnline && <span className="up-online-label">онлайн</span>}
           {profile.bio && <p className="up-bio">{profile.bio}</p>}

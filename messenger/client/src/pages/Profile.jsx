@@ -11,6 +11,7 @@ import ChangelogModal from '../components/ChangelogModal';
 import CallManager from '../components/CallManager';
 import PostCard from '../components/PostCard';
 import ProfileMusicPlayer from '../components/ProfileMusicPlayer';
+import VerifiedBadge from '../components/VerifiedBadge';
 import UserProfile from './UserProfile';
 import { validateFileSize } from '../utils/imageCompressor';
 import Admin from './Admin';
@@ -524,15 +525,18 @@ export default function Profile({ user, onUpdate, onLogout }) {
 
                 <div className="profile-title-row">
                   <div>
-                    <h1 
-                      className={`profile-name${user.animated_name ? ' gradient-name' : ''}`}
-                      style={user.animated_name 
-                        ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
-                        : { color: accent }
-                      }
-                    >
-                      {displayName}
-                    </h1>
+                    <span className="verified-name-row" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <h1 
+                        className={`profile-name${user.animated_name ? ' gradient-name' : ''}`}
+                        style={user.animated_name 
+                          ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
+                          : { color: accent }
+                        }
+                      >
+                        {displayName}
+                      </h1>
+                      {user.verified ? <VerifiedBadge size={20} /> : null}
+                    </span>
                     <p className="profile-username">@{user.username}</p>
                   </div>
                   {!editing
