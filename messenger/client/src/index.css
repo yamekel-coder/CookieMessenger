@@ -2245,7 +2245,20 @@ body {
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
-.msg-bubble-time { font-size: 0.65rem; opacity: 0.5; align-self: flex-end; }
+.msg-bubble-time {
+  font-size: 0.65rem;
+  opacity: 0.5;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.msg-read-status {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.8;
+}
 
 .msg-input-row {
   display: flex;

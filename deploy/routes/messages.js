@@ -82,6 +82,9 @@ router.get('/:userId', auth, (req, res) => {
 
   db.prepare('UPDATE messages SET read = 1 WHERE sender_id = ? AND receiver_id = ?').run(otherId, req.user.id);
 
+  // Notify sender that messages were read
+  ws.sendTo(otherId, 'read_update', { readerId: req.user.id });
+
   const msgs = db.prepare(`
     SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
     FROM messages m JOIN users u ON u.id = m.sender_id

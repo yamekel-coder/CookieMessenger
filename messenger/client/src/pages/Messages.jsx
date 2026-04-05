@@ -144,6 +144,20 @@ function MessageBubble({ m, isMine, accent, activeUser }) {
 
         <span className="msg-bubble-time" style={isMine && !m.media ? { color: 'rgba(0,0,0,0.45)' } : {}}>
           {msgTime(m.created_at)}
+          {isMine && (
+            <span className="msg-read-status" title={m.read ? 'Прочитано' : 'Доставлено'}>
+              {m.read ? (
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                  <path d="M1 5L4.5 8.5L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 5L8.5 8.5L13 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              ) : (
+                <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
+                  <path d="M1 5L4 8L7 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </span>
+          )}
         </span>
       </div>
 
@@ -294,7 +308,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
       if (activeUser?.id === partnerId) {
         setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
-        // Mark as read
+        // Mark as read — server will send read_update back to sender
         if (msg.sender_id !== user.id) api(`/api/messages/${msg.sender_id}`);
       } else if (msg.sender_id !== user.id) {
         setUnreadMap(prev => ({ ...prev, [msg.sender_id]: (prev[msg.sender_id] || 0) + 1 }));
@@ -302,7 +316,20 @@ export default function Messages({ user, initialChat, onClearInitial }) {
       loadConvos();
     };
     window.addEventListener('ws_new_message', handler);
-    return () => window.removeEventListener('ws_new_message', handler);
+
+    // Handle read receipts — update message read status
+    const readHandler = (e) => {
+      const { readerId } = e.detail;
+      setMessages(prev => prev.map(m =>
+        m.sender_id === user.id && m.receiver_id === readerId ? { ...m, read: 1 } : m
+      ));
+    };
+    window.addEventListener('ws_read_update', readHandler);
+
+    return () => {
+      window.removeEventListener('ws_new_message', handler);
+      window.removeEventListener('ws_read_update', readHandler);
+    };
   }, [activeUser, user.id, loadConvos]);
 
   const canSend = (text.trim() || mediaPreview) && !sending;
