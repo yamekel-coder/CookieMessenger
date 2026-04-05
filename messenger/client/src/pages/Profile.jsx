@@ -216,18 +216,25 @@ export default function Profile({ user, onUpdate, onLogout }) {
 
   const accent = editing ? form.accent_color : (user.accent_color || '#ffffff');
 
-  // Load VIP permissions
+  // Load VIP permissions + verified status from server
   useEffect(() => {
     const token = localStorage.getItem('token');
     fetch('/api/roles/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
-        if (!d || d.error) return; // ignore errors
+        if (!d || d.error) return;
         setHasVIP(d.permissions?.includes('animated_name') || d.permissions?.includes('profile_music'));
-        // Show admin panel only for admin/owner roles
         const adminRoles = ['admin', 'owner'];
         const hasAdminRole = Array.isArray(d.roles) && d.roles.some(r => adminRoles.includes(r));
         setIsAdmin(hasAdminRole);
+      })
+      .catch(() => {});
+
+    // Reload verified + animated_name from server (not stored in localStorage)
+    fetch('/api/profile/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) onUpdate({ ...user, verified: data.verified, animated_name: data.animated_name, profile_music: data.profile_music });
       })
       .catch(() => {});
   }, []);

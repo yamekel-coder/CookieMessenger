@@ -31,7 +31,12 @@ export default function App() {
       })
       .then(data => {
         if (data && data.profile_music !== undefined) {
-          setUser(prev => prev ? { ...prev, profile_music: data.profile_music, animated_name: data.animated_name } : prev);
+          setUser(prev => prev ? { 
+            ...prev, 
+            profile_music: data.profile_music, 
+            animated_name: data.animated_name,
+            verified: data.verified,
+          } : prev);
         }
       })
       .catch(() => {});
