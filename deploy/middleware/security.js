@@ -45,6 +45,8 @@ function securityHeaders(req, res, next) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains'); // HTTPS only
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'); // Disable unnecessary APIs
   res.removeHeader('X-Powered-By');
   next();
 }
@@ -65,7 +67,7 @@ function deepSanitize(obj) {
     const clean = {};
     for (const [k, v] of Object.entries(obj)) {
       // Don't sanitize base64 media fields
-      if (['avatar', 'banner', 'media'].includes(k)) {
+      if (['avatar', 'banner', 'media', 'profile_music'].includes(k)) {
         clean[k] = v;
       } else {
         clean[k] = deepSanitize(v);

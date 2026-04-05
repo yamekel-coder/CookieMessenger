@@ -169,9 +169,9 @@ export default function UserProfile({ username, currentUser, onBack, onOpenChat 
           <div className="up-name-row">
             <div>
               <h2 
-                className="up-name" 
+                className={`up-name${profile.animated_name ? ' gradient-name' : ''}`}
                 style={profile.animated_name 
-                  ? { background: profile.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+                  ? { background: profile.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
                   : { color: accent }
                 }
               >

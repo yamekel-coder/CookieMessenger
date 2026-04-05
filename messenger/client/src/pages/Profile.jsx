@@ -344,25 +344,58 @@ export default function Profile({ user, onUpdate, onLogout }) {
     setVipSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/profile/vip', {
+
+      // Save gradient (small, always send)
+      const gradRes = await fetch('/api/profile/vip', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(vipForm),
+        body: JSON.stringify({ animated_name: vipForm.animated_name }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setVipMsg({ ok: true, text: 'VIP настройки сохранены' });
-        setShowVipPanel(false);
-        // Don't pass profile_music back (too large), just update animated_name
-        onUpdate({ ...user, animated_name: data.animated_name, profile_music: data.music_saved ? vipForm.profile_music : user.profile_music });
-      } else {
-        setVipMsg({ ok: false, text: data.error || 'Ошибка' });
+      const gradData = await gradRes.json();
+      if (!gradRes.ok) {
+        setVipMsg({ ok: false, text: gradData.error || 'Ошибка сохранения градиента' });
+        setVipSaving(false);
+        setTimeout(() => setVipMsg(null), 3500);
+        return;
       }
-    } catch {
-      setVipMsg({ ok: false, text: 'Ошибка сети' });
+
+      // Save music separately only if a new file was selected
+      let musicSaved = false;
+      if (vipForm.profile_music && vipForm.profile_music.startsWith('data:')) {
+        const musicRes = await fetch('/api/profile/vip', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ profile_music: vipForm.profile_music }),
+        });
+        const musicData = await musicRes.json();
+        if (!musicRes.ok) {
+          setVipMsg({ ok: false, text: musicData.error || 'Ошибка сохранения музыки' });
+          setVipSaving(false);
+          setTimeout(() => setVipMsg(null), 3500);
+          return;
+        }
+        musicSaved = true;
+      } else if (vipForm.profile_music === '') {
+        // Explicitly remove music
+        await fetch('/api/profile/vip', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ profile_music: null }),
+        });
+      }
+
+      setVipMsg({ ok: true, text: 'VIP настройки сохранены' });
+      setShowVipPanel(false);
+      onUpdate({
+        ...user,
+        animated_name: gradData.animated_name,
+        profile_music: musicSaved ? vipForm.profile_music : (vipForm.profile_music === '' ? null : user.profile_music),
+      });
+    } catch (e) {
+      setVipMsg({ ok: false, text: 'Ошибка сети: ' + (e.message || 'неизвестная ошибка') });
     } finally {
       setVipSaving(false);
-      setTimeout(() => setVipMsg(null), 3500);
+      setTimeout(() => setVipMsg(null), 4000);
     }
   };
 
@@ -453,9 +486,9 @@ export default function Profile({ user, onUpdate, onLogout }) {
                 <div className="profile-title-row">
                   <div>
                     <h1 
-                      className="profile-name" 
+                      className={`profile-name${user.animated_name ? ' gradient-name' : ''}`}
                       style={user.animated_name 
-                        ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+                        ? { background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }
                         : { color: accent }
                       }
                     >

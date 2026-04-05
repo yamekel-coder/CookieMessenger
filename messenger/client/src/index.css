@@ -422,7 +422,7 @@ body {
 }
 
 .profile-name { font-size: 1.4rem; font-weight: 700; transition: color 0.3s; line-height: 1.2; }
-.profile-name[style*="background"] {
+.profile-name.gradient-name {
   background-size: 200% auto;
   animation: gradientShift 3s linear infinite;
 }
@@ -2398,7 +2398,7 @@ body {
   font-weight: 700;
   margin: 0;
 }
-.up-name[style*="background"] {
+.up-name.gradient-name {
   background-size: 200% auto;
   animation: gradientShift 3s linear infinite;
 }
