@@ -283,7 +283,7 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
   };
 
   return (
-    <div className="post-card" ref={cardRef}>
+    <div className="post-card" ref={cardRef} style={{ marginBottom: '10px' }}>
       {/* Header */}
       <div className="post-header">
         <div style={{ position: 'relative', flexShrink: 0 }}>
