@@ -4,6 +4,7 @@ import {
   User, Camera, ImagePlus, FileText, Palette, Check,
   Pencil, X, Save, AtSign, Calendar, Shield, LogOut, Rss,
   Users, MessageSquare, FileImage, Loader, ShieldAlert, UsersRound,
+  Sparkles, Music, Upload,
 } from 'lucide-react';
 import ImageCropper from '../components/ImageCropper';
 import ChangelogModal from '../components/ChangelogModal';
@@ -197,12 +198,29 @@ export default function Profile({ user, onUpdate, onLogout }) {
   const [showChangelog, setShowChangelog] = useState(false);
   const avatarRef = useRef();
   const bannerRef = useRef();
+  const musicRef = useRef();
+
+  // VIP state
+  const [hasVIP, setHasVIP] = useState(false);
+  const [vipForm, setVipForm] = useState({ animated_name: user.animated_name || '', profile_music: user.profile_music || null });
+  const [vipSaving, setVipSaving] = useState(false);
+  const [vipMsg, setVipMsg] = useState(null);
+  const [showVipPanel, setShowVipPanel] = useState(false);
 
   // Cropper state
   const [cropSrc, setCropSrc] = useState(null);
   const [cropType, setCropType] = useState(null); // 'avatar' | 'banner'
 
   const accent = editing ? form.accent_color : (user.accent_color || '#ffffff');
+
+  // Load VIP permissions
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    fetch('/api/roles/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setHasVIP(d.permissions?.includes('animated_name') || d.permissions?.includes('profile_music')))
+      .catch(() => {});
+  }, []);
 
   const handleAvatar = async e => {
     const file = e.target.files[0];
@@ -272,6 +290,51 @@ export default function Profile({ user, onUpdate, onLogout }) {
       accent_color: user.accent_color || '#ffffff',
     });
     setEditing(false);
+  };
+
+  const handleMusicUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      setVipMsg({ ok: false, text: 'Только аудио файлы (MP3, OGG, WAV)' });
+      setTimeout(() => setVipMsg(null), 3000);
+      return;
+    }
+    const MAX = 15 * 1024 * 1024;
+    if (file.size > MAX) {
+      setVipMsg({ ok: false, text: 'Файл слишком большой. Максимум 15MB' });
+      setTimeout(() => setVipMsg(null), 3000);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setVipForm(f => ({ ...f, profile_music: ev.target.result }));
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleVipSave = async () => {
+    setVipSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/profile/vip', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(vipForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setVipMsg({ ok: true, text: 'VIP настройки сохранены' });
+        setShowVipPanel(false);
+        onUpdate({ ...user, animated_name: data.animated_name, profile_music: data.profile_music });
+      } else {
+        setVipMsg({ ok: false, text: data.error || 'Ошибка' });
+      }
+    } catch {
+      setVipMsg({ ok: false, text: 'Ошибка сети' });
+    } finally {
+      setVipSaving(false);
+      setTimeout(() => setVipMsg(null), 3500);
+    }
   };
 
   const displayAvatar = editing ? form.avatar : user.avatar;
@@ -529,6 +592,120 @@ export default function Profile({ user, onUpdate, onLogout }) {
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: accent, border: '1px solid #2a2a2a', flexShrink: 0 }} />
                     <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: '#888' }}>{accent}</span>
                   </div>
+                </div>
+              )}
+
+              {/* VIP panel */}
+              {!editing && hasVIP && (
+                <div className="profile-card pcard-full">
+                  <div className="pcard-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span className="section-label"><Sparkles size={13} /> VIP Оформление</span>
+                    <button
+                      className="btn-edit-profile"
+                      onClick={() => setShowVipPanel(v => !v)}
+                      style={{ color: '#ffd43b', borderColor: '#ffd43b44' }}
+                    >
+                      <Pencil size={13} /> {showVipPanel ? 'Скрыть' : 'Изменить'}
+                    </button>
+                  </div>
+
+                  {vipMsg && (
+                    <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, marginBottom: '0.75rem', fontSize: '0.85rem',
+                      background: vipMsg.ok ? 'rgba(105,219,124,0.08)' : 'rgba(255,107,107,0.08)',
+                      border: `1px solid ${vipMsg.ok ? 'rgba(105,219,124,0.2)' : 'rgba(255,107,107,0.2)'}`,
+                      color: vipMsg.ok ? '#69db7c' : '#ff6b6b' }}>
+                      {vipMsg.text}
+                    </div>
+                  )}
+
+                  {!showVipPanel && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#555' }}>
+                        Ник: {user.animated_name
+                          ? <span style={{ background: user.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 600 }}>Градиент активен</span>
+                          : <span style={{ color: '#333' }}>Не задан</span>}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#555' }}>
+                        Музыка: {user.profile_music ? <span style={{ color: '#69db7c' }}>Загружена</span> : <span style={{ color: '#333' }}>Не загружена</span>}
+                      </div>
+                    </div>
+                  )}
+
+                  {showVipPanel && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {/* Animated name */}
+                      <div className="setup-field" style={{ marginBottom: 0 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#555', marginBottom: '0.5rem' }}>
+                          <Sparkles size={12} /> Градиент для ника
+                        </label>
+                        <input
+                          type="text"
+                          value={vipForm.animated_name}
+                          onChange={e => setVipForm(f => ({ ...f, animated_name: e.target.value }))}
+                          placeholder="linear-gradient(90deg, #ff0080, #7928ca, #ff0080)"
+                          maxLength={300}
+                          style={{ width: '100%', padding: '0.65rem 0.9rem', background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, color: '#f0f0f0', fontSize: '0.9rem', fontFamily: 'Inter, sans-serif', outline: 'none' }}
+                        />
+                        {vipForm.animated_name && vipForm.animated_name.match(/^(linear|radial)-gradient\(/) && (
+                          <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.8rem', borderRadius: 6, background: '#111', border: '1px solid #222', fontSize: '0.85rem' }}>
+                            Предпросмотр: <span style={{ background: vipForm.animated_name, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', fontWeight: 700 }}>
+                              {user.display_name || user.username}
+                            </span>
+                          </div>
+                        )}
+                        <span style={{ fontSize: '0.72rem', color: '#444', marginTop: '0.25rem', display: 'block' }}>
+                          Оставьте пустым чтобы убрать градиент
+                        </span>
+                      </div>
+
+                      {/* Music upload */}
+                      <div className="setup-field" style={{ marginBottom: 0 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#555', marginBottom: '0.5rem' }}>
+                          <Music size={12} /> Музыка на профиле (MP3, макс. 15MB)
+                        </label>
+                        <input ref={musicRef} type="file" accept="audio/*" hidden onChange={handleMusicUpload} />
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => musicRef.current.click()}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 1rem', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#888', fontSize: '0.85rem', cursor: 'pointer' }}
+                          >
+                            <Upload size={14} /> Загрузить файл
+                          </button>
+                          {vipForm.profile_music && (
+                            <button
+                              type="button"
+                              onClick={() => setVipForm(f => ({ ...f, profile_music: null }))}
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.8rem', background: 'transparent', border: '1px solid #ff6b6b44', borderRadius: 8, color: '#ff6b6b', fontSize: '0.85rem', cursor: 'pointer' }}
+                            >
+                              <X size={13} /> Убрать
+                            </button>
+                          )}
+                        </div>
+                        {vipForm.profile_music && (
+                          <audio controls src={vipForm.profile_music} style={{ marginTop: '0.5rem', width: '100%', maxWidth: 300, height: 32 }} />
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => { setShowVipPanel(false); setVipForm({ animated_name: user.animated_name || '', profile_music: user.profile_music || null }); }}
+                          style={{ padding: '0.55rem 1.1rem', background: 'transparent', border: '1px solid #222', borderRadius: 8, color: '#555', fontSize: '0.85rem', cursor: 'pointer' }}
+                        >
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleVipSave}
+                          disabled={vipSaving}
+                          style={{ padding: '0.55rem 1.3rem', background: '#ffd43b', border: 'none', borderRadius: 8, color: '#000', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', opacity: vipSaving ? 0.6 : 1 }}
+                        >
+                          {vipSaving ? '...' : 'Сохранить'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Bell, Mail, Key, Trash2, ChevronRight,
   Eye, EyeOff, Check, AlertTriangle, Shield, User, Sun, Moon, AtSign,
-  MessageSquare, Phone, UserPlus, Sparkles, Music,
+  MessageSquare, Phone, UserPlus,
 } from 'lucide-react';
 
 function Toggle({ checked, onChange }) {
@@ -66,14 +66,12 @@ export default function Settings({ user, onUpdate, onLogout }) {
   const [loading, setLoading] = useState(true);
 
   // expanded panels
-  const [panel, setPanel] = useState(null); // 'email' | 'password' | 'delete' | 'vip'
+  const [panel, setPanel] = useState(null); // 'email' | 'password' | 'delete'
 
   // forms
   const [emailForm, setEmailForm] = useState({ email: '', password: '' });
   const [passForm, setPassForm] = useState({ current_password: '', new_password: '', confirm: '' });
   const [deleteForm, setDeleteForm] = useState({ password: '' });
-  const [vipForm, setVipForm] = useState({ animated_name: '', profile_music: '' });
-  const [hasVIP, setHasVIP] = useState(false);
 
   // ui state
   const [showPw, setShowPw] = useState({});
@@ -81,24 +79,20 @@ export default function Settings({ user, onUpdate, onLogout }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/settings', { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.json()),
-      fetch('/api/profile/me', { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.json()),
-      fetch('/api/roles/me', { headers: { Authorization: `Bearer ${token()}` } }).then(r => r.json()),
-    ]).then(([settings, profile, roles]) => {
-      setNotif({ notif_messages: !!settings.notif_messages, notif_mentions: !!settings.notif_mentions, notif_updates: !!settings.notif_updates });
-      setPrivacy({
-        privacy_show_email: !!settings.privacy_show_email,
-        privacy_public_profile: !!settings.privacy_public_profile,
-        privacy_who_can_message: settings.privacy_who_can_message || 'friends',
-        privacy_who_can_call: settings.privacy_who_can_call || 'friends',
-        privacy_who_can_add: settings.privacy_who_can_add || 'everyone',
-        privacy_show_online: settings.privacy_show_online !== 0,
+    fetch('/api/settings', { headers: { Authorization: `Bearer ${token()}` } })
+      .then(r => r.json())
+      .then(d => {
+        setNotif({ notif_messages: !!d.notif_messages, notif_mentions: !!d.notif_mentions, notif_updates: !!d.notif_updates });
+        setPrivacy({
+          privacy_show_email: !!d.privacy_show_email,
+          privacy_public_profile: !!d.privacy_public_profile,
+          privacy_who_can_message: d.privacy_who_can_message || 'friends',
+          privacy_who_can_call: d.privacy_who_can_call || 'friends',
+          privacy_who_can_add: d.privacy_who_can_add || 'everyone',
+          privacy_show_online: d.privacy_show_online !== 0,
+        });
+        setLoading(false);
       });
-      setVipForm({ animated_name: profile.animated_name || '', profile_music: profile.profile_music || '' });
-      setHasVIP(roles.permissions?.includes('animated_name') || roles.permissions?.includes('profile_music'));
-      setLoading(false);
-    });
   }, []);
 
   const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3500); };
@@ -171,23 +165,6 @@ export default function Settings({ user, onUpdate, onLogout }) {
       const data = await res.json();
       if (!res.ok) return flash('err', data.error);
       onLogout();
-    } finally { setSaving(false); }
-  };
-
-  const handleVIPSave = async e => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/profile/vip', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-        body: JSON.stringify(vipForm),
-      });
-      const data = await res.json();
-      if (!res.ok) return flash('err', data.error);
-      flash('ok', 'VIP настройки сохранены');
-      setPanel(null);
-      onUpdate?.();
     } finally { setSaving(false); }
   };
 
@@ -426,50 +403,6 @@ export default function Settings({ user, onUpdate, onLogout }) {
           </form>
         )}
       </Section>
-
-      {/* VIP Features */}
-      {hasVIP && (
-        <Section title="VIP Функции">
-          <SettingRow
-            icon={<Sparkles size={16} />}
-            label="Анимированный ник и музыка"
-            desc="Градиентный ник и музыка на профиле"
-            right={<ChevronRight size={16} className="settings-chevron" />}
-            onClick={() => setPanel(panel === 'vip' ? null : 'vip')}
-          />
-          {panel === 'vip' && (
-            <form className="settings-inline-form" onSubmit={handleVIPSave}>
-              <div className="sif-field">
-                <label>Градиент для ника (CSS)</label>
-                <input
-                  type="text"
-                  value={vipForm.animated_name}
-                  placeholder="linear-gradient(90deg, #ff0080, #7928ca)"
-                  onChange={e => setVipForm({ ...vipForm, animated_name: e.target.value })}
-                  maxLength={500}
-                />
-                <span style={{ fontSize: '0.75rem', color: '#555', marginTop: '0.25rem' }}>
-                  Пример: linear-gradient(90deg, #ff0080, #7928ca)
-                </span>
-              </div>
-              <div className="sif-field">
-                <label><Music size={12} /> Музыка на профиле (URL)</label>
-                <input
-                  type="url"
-                  value={vipForm.profile_music}
-                  placeholder="https://example.com/music.mp3"
-                  onChange={e => setVipForm({ ...vipForm, profile_music: e.target.value })}
-                  maxLength={500}
-                />
-              </div>
-              <div className="sif-actions">
-                <button type="button" className="sif-cancel" onClick={() => setPanel(null)}>Отмена</button>
-                <button type="submit" className="sif-submit" disabled={saving}>Сохранить</button>
-              </div>
-            </form>
-          )}
-        </Section>
-      )}
 
       <p className="settings-version">RLC v1.0.0</p>
     </div>
