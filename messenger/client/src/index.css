@@ -3,50 +3,75 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg-opacity: 0.75; /* adjust 0.0 (transparent) to 1.0 (solid) */
-  --bg-base: rgba(10, 10, 10, var(--bg-opacity));
-  --bg-card: rgba(17, 17, 17, var(--bg-opacity));
-  --bg-sidebar: rgba(13, 13, 13, var(--bg-opacity));
+  --bg-opacity: 0.82;
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #0a0a0a;
-  background-image: url('/bg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
   color: #f0f0f0;
   min-height: 100vh;
+  position: relative;
 }
 
-/* Make main layout backgrounds semi-transparent */
-.profile-page { background: transparent !important; }
-.profile-main { background: var(--bg-base) !important; }
-.profile-sidebar { background: var(--bg-sidebar) !important; }
-.profile-hero { background: var(--bg-card) !important; }
-.profile-card { background: var(--bg-card) !important; }
-.post-card { background: var(--bg-card) !important; }
-.create-post { background: var(--bg-card) !important; }
-.msg-sidebar { background: var(--bg-sidebar) !important; }
-.msg-chat { background: var(--bg-base) !important; }
-.msg-chat-header { background: var(--bg-sidebar) !important; }
-.msg-input-area { background: var(--bg-sidebar) !important; }
-.msg-convo { background: transparent !important; }
-.msg-convo.active { background: rgba(255,255,255,0.06) !important; }
-.adm-page { background: transparent !important; }
-.adm-sidebar { background: var(--bg-sidebar) !important; }
-.adm-main { background: var(--bg-base) !important; }
-.adm-stat-card { background: var(--bg-card) !important; }
-.adm-table-wrap { background: var(--bg-card) !important; }
-.friends-page { background: transparent !important; }
-.fr-card { background: var(--bg-card) !important; }
-.user-profile { background: transparent !important; }
-.up-hero { background: var(--bg-card) !important; }
-.messages-page { background: transparent !important; }
+/* Fixed background layer — always behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #0a0a0a url('/bg.jpg') center/cover no-repeat;
+}
+
+/* Semi-transparent overlay to darken bg and keep readability */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* All main panels — semi-transparent dark glass effect */
+.profile-sidebar,
+.profile-main,
+.adm-sidebar,
+.adm-main,
+.msg-sidebar,
+.msg-chat,
+.msg-chat-header,
+.msg-input-area {
+  background: rgba(10, 10, 10, var(--bg-opacity)) !important;
+}
+
+.profile-hero,
+.profile-card,
+.post-card,
+.create-post,
+.fr-card,
+.up-hero,
+.adm-stat-card,
+.adm-table-wrap,
+.adm-broadcast-card,
+.settings-card,
+.changelog-modal,
+.cropper-modal,
+.adm-modal {
+  background: rgba(17, 17, 17, var(--bg-opacity)) !important;
+}
+
+/* Auth pages */
 .auth-wrapper { background: transparent !important; }
-.auth-container { background: var(--bg-card) !important; }
+.auth-container { background: rgba(17, 17, 17, var(--bg-opacity)) !important; }
+.setup-card { background: rgba(17, 17, 17, var(--bg-opacity)) !important; }
+
+/* Transparent page wrappers */
+.profile-page,
+.messages-page,
+.friends-page,
+.user-profile,
+.adm-page,
+.settings-page,
+.feed-page { background: transparent !important; }
 
 /* ── Auth ── */
 .auth-wrapper {
