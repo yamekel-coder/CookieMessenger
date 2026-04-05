@@ -3941,6 +3941,8 @@ body {
   filter: brightness(1.3);
 }
 .adm-role-btn:disabled { cursor: default; }
+
+.adm-col-hide-sm { /* hidden on mobile via media query */ }
 .adm-perms-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -4354,23 +4356,57 @@ body {
     border-right: none;
     border-bottom: 1px solid #1a1a1a;
     padding: 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #0d0d0d;
   }
+
+  .adm-sidebar-header { display: none; }
 
   .adm-nav { flex-direction: row; overflow-x: auto; gap: 4px; scrollbar-width: none; }
   .adm-nav::-webkit-scrollbar { display: none; }
 
-  .adm-nav-item { white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.75rem; }
+  .adm-nav-item { white-space: nowrap; font-size: 0.78rem; padding: 0.45rem 0.75rem; border-radius: 20px; }
+  .adm-nav-item.active { background: #1e1e1e; }
 
-  .adm-back-btn { display: none; }
+  .adm-back-btn {
+    display: flex;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid #222;
+    margin-bottom: 0.5rem;
+  }
 
-  .adm-main { padding: 1rem; }
+  .adm-main { padding: 0.75rem; }
 
-  .adm-stats-grid { grid-template-columns: 1fr 1fr; }
+  .adm-stats-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .adm-stat-card { padding: 0.75rem; }
 
-  .adm-table-wrap { overflow-x: auto; }
-  .adm-table { min-width: 600px; }
+  /* Roles table → cards on mobile */
+  .adm-table-wrap { overflow-x: visible; }
+  .adm-table { min-width: unset; width: 100%; }
+
+  /* Hide less important columns on mobile */
+  .adm-col-hide-sm { display: none; }
+
+  .adm-role-select-row { flex-wrap: wrap; gap: 4px; }
+  .adm-role-btn { font-size: 0.72rem; padding: 5px 10px; min-height: 32px; }
 
   .adm-perms-grid { grid-template-columns: 1fr 1fr; }
+
+  .adm-toolbar { flex-wrap: wrap; gap: 0.5rem; }
+  .adm-search { flex: 1; min-width: 0; }
+
+  .adm-broadcast-card { padding: 1rem; }
+
+  .adm-modal { width: calc(100% - 1rem); margin: 0.5rem; }
+
+  .adm-user-cell { gap: 0.4rem; }
+  .adm-user-avatar { width: 28px !important; height: 28px !important; font-size: 0.7rem !important; }
+
+  .adm-roles-legend { flex-wrap: wrap; gap: 6px; }
 }
 
 /* ── Auth on mobile ─────────────────────────────────────────────────────── */
@@ -4379,6 +4415,18 @@ body {
   .auth-title { font-size: 1.2rem; }
   .setup-card { border-radius: 12px; }
   .setup-step { padding: 1.25rem 1.25rem; }
+
+  /* Admin extra small */
+  .adm-stats-grid { grid-template-columns: 1fr; }
+  .adm-table th:nth-child(3),
+  .adm-table td:nth-child(3) { display: none; } /* hide registration date */
+  .adm-table th:nth-child(4),
+  .adm-table td:nth-child(4) { display: none; } /* hide posts count */
+  .adm-table th:nth-child(5),
+  .adm-table td:nth-child(5) { display: none; } /* hide messages count */
+  .adm-table th:nth-child(6),
+  .adm-table td:nth-child(6) { display: none; } /* hide followers */
+  .adm-perms-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Modals on mobile ───────────────────────────────────────────────────── */

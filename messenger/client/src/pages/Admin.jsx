@@ -487,9 +487,9 @@ function RolesTab({ accent }) {
           <thead>
             <tr>
               <th>Пользователь</th>
-              <th>Email</th>
-              <th>Текущая роль</th>
-              <th>Назначить роль</th>
+              <th className="adm-col-hide-sm">Email</th>
+              <th>Роли</th>
+              <th>Назначить</th>
             </tr>
           </thead>
           <tbody>
@@ -510,7 +510,7 @@ function RolesTab({ accent }) {
                     </div>
                   </div>
                 </td>
-                <td className="adm-cell-muted">{u.email}</td>
+                <td className="adm-cell-muted adm-col-hide-sm">{u.email}</td>
                 <td>
                   <span className="adm-role-current" style={{ color: u.roleColor, borderColor: u.roleColor }}>
                     <Crown size={11} /> {u.roleLabel}
@@ -521,7 +521,7 @@ function RolesTab({ accent }) {
                 </td>
                 <td>
                   <div className="adm-role-select-row">
-                    {roles.map(r => {
+                    {roles.filter(r => r.id !== 'user').map(r => {
                       const hasRole = u.roles?.includes(r.id);
                       return (
                         <button
