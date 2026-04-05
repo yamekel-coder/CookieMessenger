@@ -185,6 +185,7 @@ export default function Profile({ user, onUpdate, onLogout }) {
 
   // VIP state
   const [hasVIP, setHasVIP] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [vipForm, setVipForm] = useState({ animated_name: user.animated_name || '', profile_music: user.profile_music || null });
   const [vipSaving, setVipSaving] = useState(false);
   const [vipMsg, setVipMsg] = useState(null);
@@ -219,7 +220,10 @@ export default function Profile({ user, onUpdate, onLogout }) {
     const token = localStorage.getItem('token');
     fetch('/api/roles/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => setHasVIP(d.permissions?.includes('animated_name') || d.permissions?.includes('profile_music')))
+      .then(d => {
+        setHasVIP(d.permissions?.includes('animated_name') || d.permissions?.includes('profile_music'));
+        setIsAdmin(d.permissions?.includes('manage_roles') || d.permissions?.includes('owner') || d.roles?.includes('admin') || d.roles?.includes('owner'));
+      })
       .catch(() => {});
   }, []);
 
@@ -473,7 +477,7 @@ export default function Profile({ user, onUpdate, onLogout }) {
             onClick={() => setTab('settings')} style={tab === 'settings' ? { color: accent } : {}}>
             <Shield size={17} /> Настройки
           </button>
-          {user.email === 'yamekel0@gmail.com' && (
+          {(user.email === 'yamekel0@gmail.com' || isAdmin) && (
             <button className={`sidebar-item ${tab === 'admin' ? 'active' : ''}`}
               onClick={() => setTab('admin')} style={tab === 'admin' ? { color: '#ff6b6b' } : { color: '#ff6b6b', opacity: 0.6 }}>
               <ShieldAlert size={17} /> Админ-панель
@@ -890,7 +894,7 @@ export default function Profile({ user, onUpdate, onLogout }) {
           </div>
         )}
 
-        {tab === 'admin' && user.email === 'yamekel0@gmail.com' && (
+        {tab === 'admin' && (user.email === 'yamekel0@gmail.com' || isAdmin) && (
           <div className="profile-content profile-content--full" style={{ padding: 0 }}>
             <Admin user={user} onBack={() => setTab('profile')} />
           </div>

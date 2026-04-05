@@ -19,12 +19,16 @@ export default function App() {
   }, []);
 
   // Load profile_music from server on startup (not stored in localStorage)
+  // Also handles 401 — auto logout if token is invalid
   useEffect(() => {
     if (!user) return;
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) { handleLogout(); return; }
     fetch('/api/profile/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (r.status === 401) { handleLogout(); return null; }
+        return r.ok ? r.json() : null;
+      })
       .then(data => {
         if (data && data.profile_music !== undefined) {
           setUser(prev => prev ? { ...prev, profile_music: data.profile_music, animated_name: data.animated_name } : prev);
