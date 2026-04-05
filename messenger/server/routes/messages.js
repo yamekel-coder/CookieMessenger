@@ -86,8 +86,12 @@ router.get('/:userId', auth, (req, res) => {
   ws.sendTo(otherId, 'read_update', { readerId: req.user.id });
 
   const msgs = db.prepare(`
-    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name,
+      r.content as reply_content, r.sender_id as reply_sender_id,
+      ru.display_name as reply_display_name, ru.username as reply_username
     FROM messages m JOIN users u ON u.id = m.sender_id
+    LEFT JOIN messages r ON r.id = m.reply_to_id
+    LEFT JOIN users ru ON ru.id = r.sender_id
     WHERE (m.sender_id = ? AND m.receiver_id = ?)
        OR (m.sender_id = ? AND m.receiver_id = ?)
     ORDER BY m.created_at ASC LIMIT 100
@@ -108,22 +112,73 @@ router.post('/:userId', auth, validateLengths({ content: 2000 }), (req, res) => 
   if (!checkMsgCooldown(req.user.id))
     return res.status(429).json({ error: 'Слишком быстро. Подождите секунду.' });
 
-  const { content, media, media_type } = req.body;
+  const { content, media, media_type, reply_to_id } = req.body;
   if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустое сообщение' });
 
+  // Validate reply_to_id belongs to this conversation
+  let replyId = null;
+  if (reply_to_id) {
+    const replyMsg = db.prepare('SELECT id FROM messages WHERE id = ? AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))').get(reply_to_id, req.user.id, receiverId, receiverId, req.user.id);
+    if (replyMsg) replyId = replyMsg.id;
+  }
+
   const result = db.prepare(
-    'INSERT INTO messages (sender_id, receiver_id, content, media, media_type) VALUES (?, ?, ?, ?, ?)'
-  ).run(req.user.id, receiverId, content?.trim() || null, media || null, media_type || null);
+    'INSERT INTO messages (sender_id, receiver_id, content, media, media_type, reply_to_id) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(req.user.id, receiverId, content?.trim() || null, media || null, media_type || null, replyId);
 
   const msg = db.prepare(`
-    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
-    FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.id = ?
+    SELECT m.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name,
+      r.content as reply_content, r.sender_id as reply_sender_id,
+      ru.display_name as reply_display_name, ru.username as reply_username
+    FROM messages m JOIN users u ON u.id = m.sender_id
+    LEFT JOIN messages r ON r.id = m.reply_to_id
+    LEFT JOIN users ru ON ru.id = r.sender_id
+    WHERE m.id = ?
   `).get(result.lastInsertRowid);
 
   ws.sendTo(receiverId, 'new_message', msg);
   ws.sendTo(req.user.id, 'new_message', msg);
 
   res.json(msg);
+});
+
+// PUT /api/messages/:msgId — edit message
+router.put('/:msgId', auth, validateLengths({ content: 2000 }), (req, res) => {
+  const msgId = parseInt(req.params.msgId);
+  if (isNaN(msgId)) return res.status(400).json({ error: 'Неверный ID' });
+
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(msgId);
+  if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
+  if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Нельзя редактировать чужое сообщение' });
+  if (msg.deleted) return res.status(400).json({ error: 'Сообщение удалено' });
+
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ error: 'Пустое сообщение' });
+
+  db.prepare('UPDATE messages SET content = ?, edited = 1 WHERE id = ?').run(content.trim(), msgId);
+
+  const updated = { ...msg, content: content.trim(), edited: 1 };
+  ws.sendTo(msg.receiver_id, 'message_edited', { msgId, content: content.trim() });
+  ws.sendTo(msg.sender_id, 'message_edited', { msgId, content: content.trim() });
+
+  res.json(updated);
+});
+
+// DELETE /api/messages/:msgId — delete message
+router.delete('/:msgId', auth, (req, res) => {
+  const msgId = parseInt(req.params.msgId);
+  if (isNaN(msgId)) return res.status(400).json({ error: 'Неверный ID' });
+
+  const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(msgId);
+  if (!msg) return res.status(404).json({ error: 'Сообщение не найдено' });
+  if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Нельзя удалить чужое сообщение' });
+
+  db.prepare('UPDATE messages SET deleted = 1, content = NULL, media = NULL WHERE id = ?').run(msgId);
+
+  ws.sendTo(msg.receiver_id, 'message_deleted', { msgId });
+  ws.sendTo(msg.sender_id, 'message_deleted', { msgId });
+
+  res.json({ ok: true });
 });
 
 module.exports = router;

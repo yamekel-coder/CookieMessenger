@@ -160,6 +160,9 @@ db.exec(`
 const msgCols = db.prepare("PRAGMA table_info(messages)").all().map(c => c.name);
 if (!msgCols.includes('media')) db.exec('ALTER TABLE messages ADD COLUMN media TEXT');
 if (!msgCols.includes('media_type')) db.exec('ALTER TABLE messages ADD COLUMN media_type TEXT');
+if (!msgCols.includes('edited')) db.exec('ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0');
+if (!msgCols.includes('deleted')) db.exec('ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0');
+if (!msgCols.includes('reply_to_id')) db.exec('ALTER TABLE messages ADD COLUMN reply_to_id INTEGER REFERENCES messages(id) ON DELETE SET NULL');
 
 // Follows (subscriptions)
 db.exec(`

@@ -43,14 +43,13 @@ migrate('notif_updates', 'INTEGER DEFAULT 1');
 migrate('is_banned', 'INTEGER DEFAULT 0');
 migrate('ban_reason', 'TEXT');
 migrate('role', "TEXT DEFAULT 'user'");
+migrate('discord_id', 'TEXT');
+migrate('discord_verified', 'INTEGER DEFAULT 0');
 // Privacy extended
-migrate('privacy_who_can_message', "TEXT DEFAULT 'friends'");
-migrate('privacy_who_can_call',    "TEXT DEFAULT 'friends'");
+migrate('privacy_who_can_message', "TEXT DEFAULT 'everyone'");
+migrate('privacy_who_can_call',    "TEXT DEFAULT 'everyone'");
 migrate('privacy_who_can_add',     "TEXT DEFAULT 'everyone'");
 migrate('privacy_show_online',     'INTEGER DEFAULT 1');
-// VIP features
-migrate('animated_name', 'TEXT');
-migrate('profile_music', 'TEXT');
 
 // Posts
 db.exec(`
@@ -161,6 +160,9 @@ db.exec(`
 const msgCols = db.prepare("PRAGMA table_info(messages)").all().map(c => c.name);
 if (!msgCols.includes('media')) db.exec('ALTER TABLE messages ADD COLUMN media TEXT');
 if (!msgCols.includes('media_type')) db.exec('ALTER TABLE messages ADD COLUMN media_type TEXT');
+if (!msgCols.includes('edited')) db.exec('ALTER TABLE messages ADD COLUMN edited INTEGER DEFAULT 0');
+if (!msgCols.includes('deleted')) db.exec('ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0');
+if (!msgCols.includes('reply_to_id')) db.exec('ALTER TABLE messages ADD COLUMN reply_to_id INTEGER REFERENCES messages(id) ON DELETE SET NULL');
 
 // Follows (subscriptions)
 db.exec(`
@@ -197,6 +199,66 @@ db.exec(`
     assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, role),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+// VIP features
+migrate('animated_name', 'TEXT'); // gradient CSS for animated name
+migrate('profile_music', 'TEXT'); // URL to music file
+
+// Groups
+db.exec(`
+  CREATE TABLE IF NOT EXISTS groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    avatar TEXT,
+    type TEXT NOT NULL DEFAULT 'public',
+    owner_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS group_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(group_id, user_id),
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS group_invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    inviter_id INTEGER NOT NULL,
+    invitee_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(group_id, invitee_id),
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (invitee_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS group_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    sender_id INTEGER NOT NULL,
+    content TEXT,
+    media TEXT,
+    media_type TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
   )
 `);
 

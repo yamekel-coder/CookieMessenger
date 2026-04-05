@@ -87,81 +87,120 @@ function ConversationList({ convos, activeId, onSelect, currentUserId, unreadMap
   });
 }
 
-function MessageBubble({ m, isMine, accent, activeUser }) {
+function MessageBubble({ m, isMine, accent, onReply, onEdit, onDelete }) {
   const [lightbox, setLightbox] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(m.content || '');
+  const menuRef = useRef();
 
-  // Sticker — big emoji
-  if (m.media_type === 'sticker') {
+  useEffect(() => {
+    if (!menu) return;
+    const handler = (e) => { if (!menuRef.current?.contains(e.target)) setMenu(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menu]);
+
+  const submitEdit = () => {
+    if (editText.trim() && editText.trim() !== m.content) onEdit(m.id, editText.trim());
+    setEditing(false);
+  };
+
+  if (m.deleted) {
     return (
-      <div className={`msg-bubble msg-bubble-sticker ${isMine ? 'msg-bubble-mine-sticker' : ''}`}>
-        <span className="msg-sticker">{m.content}</span>
-        <span className="msg-bubble-time" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          {msgTime(m.created_at)}
-        </span>
+      <div className={`msg-bubble ${isMine ? 'msg-bubble-mine' : 'msg-bubble-theirs'} msg-bubble-deleted`}>
+        <span>Сообщение удалено</span>
       </div>
     );
   }
 
-  // GIF
+  if (m.media_type === 'sticker') {
+    return (
+      <div className={`msg-bubble msg-bubble-sticker ${isMine ? 'msg-bubble-mine-sticker' : ''}`}>
+        <span className="msg-sticker">{m.content}</span>
+        <span className="msg-bubble-time" style={{ color: 'rgba(255,255,255,0.35)' }}>{msgTime(m.created_at)}</span>
+      </div>
+    );
+  }
+
   if (m.media_type === 'gif') {
     return (
       <div className={`msg-bubble msg-bubble-gif ${isMine ? 'msg-bubble-mine' : 'msg-bubble-theirs'}`}
         style={{ padding: 0, background: 'transparent' }}>
         <img src={m.media} alt="gif" className="msg-media-img" style={{ borderRadius: 12 }} />
-        <span className="msg-bubble-time" style={{ padding: '0 0.5rem 0.3rem', opacity: 0.5 }}>
-          {msgTime(m.created_at)}
-        </span>
+        <span className="msg-bubble-time" style={{ padding: '0 0.5rem 0.3rem', opacity: 0.5 }}>{msgTime(m.created_at)}</span>
       </div>
     );
   }
 
   return (
     <>
-      <div className={`msg-bubble ${isMine ? 'msg-bubble-mine' : 'msg-bubble-theirs'}`}
-        style={isMine && !m.media ? { background: accent, color: '#000' } : {}}>
-
-        {/* Image */}
-        {m.media && m.media_type === 'image' && (
-          <img
-            src={m.media}
-            alt="img"
-            className="msg-media-img"
-            onClick={() => setLightbox(true)}
-          />
+      <div className={`msg-bubble-wrap ${isMine ? 'msg-bubble-wrap-mine' : ''}`} ref={menuRef}>
+        <button className="msg-action-dot" onClick={() => setMenu(v => !v)}>•••</button>
+        {menu && (
+          <div className={`msg-context-menu ${isMine ? 'msg-context-menu-mine' : ''}`}>
+            <button onClick={() => { onReply(m); setMenu(false); }}>↩ Ответить</button>
+            {isMine && !m.media && <button onClick={() => { setEditing(true); setMenu(false); }}>✏️ Редактировать</button>}
+            {isMine && <button className="msg-ctx-danger" onClick={() => { onDelete(m.id); setMenu(false); }}>🗑 Удалить</button>}
+          </div>
         )}
 
-        {/* Video */}
-        {m.media && m.media_type === 'video' && (
-          <video src={m.media} controls className="msg-media-video" />
-        )}
+        <div className={`msg-bubble ${isMine ? 'msg-bubble-mine' : 'msg-bubble-theirs'}`}
+          style={isMine && !m.media ? { background: accent, color: '#000' } : {}}>
 
-        {/* Text */}
-        {m.content && (
-          <span className="msg-bubble-text" style={isMine && m.media ? { color: '#000' } : {}}>
-            {m.content}
-          </span>
-        )}
-
-        <span className="msg-bubble-time" style={isMine && !m.media ? { color: 'rgba(0,0,0,0.45)' } : {}}>
-          {msgTime(m.created_at)}
-          {isMine && (
-            <span className="msg-read-status" title={m.read ? 'Прочитано' : 'Доставлено'}>
-              {m.read ? (
-                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-                  <path d="M1 5L4.5 8.5L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M5 5L8.5 8.5L13 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              ) : (
-                <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
-                  <path d="M1 5L4 8L7 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
-            </span>
+          {m.reply_to_id && (
+            <div className="msg-reply-preview" style={isMine ? { borderColor: 'rgba(0,0,0,0.25)', background: 'rgba(0,0,0,0.1)' } : {}}>
+              <span className="msg-reply-name">{m.reply_display_name || m.reply_username || '—'}</span>
+              <span className="msg-reply-text">{m.reply_content ? m.reply_content.slice(0, 60) : '📎 Медиа'}</span>
+            </div>
           )}
-        </span>
+
+          {m.media && m.media_type === 'image' && (
+            <img src={m.media} alt="img" className="msg-media-img" onClick={() => setLightbox(true)} />
+          )}
+          {m.media && m.media_type === 'video' && (
+            <video src={m.media} controls className="msg-media-video" />
+          )}
+
+          {editing ? (
+            <div className="msg-edit-wrap">
+              <input className="msg-edit-input" value={editText}
+                onChange={e => setEditText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitEdit(); if (e.key === 'Escape') setEditing(false); }}
+                autoFocus />
+              <div className="msg-edit-actions">
+                <button onClick={() => setEditing(false)}>Отмена</button>
+                <button onClick={submitEdit}>Сохранить</button>
+              </div>
+            </div>
+          ) : (
+            m.content && (
+              <span className="msg-bubble-text" style={isMine && m.media ? { color: '#000' } : {}}>
+                {m.content}{m.edited ? <span className="msg-edited"> (ред.)</span> : null}
+              </span>
+            )
+          )}
+
+          <span className="msg-bubble-time" style={isMine && !m.media ? { color: 'rgba(0,0,0,0.45)' } : {}}>
+            {msgTime(m.created_at)}
+            {isMine && (
+              <span className="msg-read-status" title={m.read ? 'Прочитано' : 'Доставлено'}>
+                {m.read ? (
+                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                    <path d="M1 5L4.5 8.5L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M5 5L8.5 8.5L13 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : (
+                  <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
+                    <path d="M1 5L4 8L7 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </span>
+            )}
+          </span>
+        </div>
       </div>
 
-      {/* Lightbox */}
       {lightbox && (
         <div className="msg-lightbox" onClick={() => setLightbox(false)}>
           <button className="msg-lightbox-close"><X size={20} /></button>
@@ -172,6 +211,7 @@ function MessageBubble({ m, isMine, accent, activeUser }) {
   );
 }
 
+
 export default function Messages({ user, initialChat, onClearInitial }) {
   const [convos, setConvos] = useState([]);
   const [activeUser, setActiveUser] = useState(null);
@@ -179,10 +219,11 @@ export default function Messages({ user, initialChat, onClearInitial }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [unreadMap, setUnreadMap] = useState({});
-  const [mediaPreview, setMediaPreview] = useState(null); // { src, type, file }
+  const [mediaPreview, setMediaPreview] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
   const [convoSearch, setConvoSearch] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
+  const [replyTo, setReplyTo] = useState(null); // message being replied to
   const bottomRef = useRef();
   const inputRef = useRef();
   const fileRef = useRef();
@@ -277,26 +318,30 @@ export default function Messages({ user, initialChat, onClearInitial }) {
         content: text.trim() || null,
         media: mediaPreview?.src || null,
         media_type: mediaPreview?.type || null,
+        reply_to_id: replyTo?.id || null,
       };
-      
-      const res = await api(`/api/messages/${activeUser.id}`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      
+      const res = await api(`/api/messages/${activeUser.id}`, { method: 'POST', body: JSON.stringify(body) });
       if (res.ok) {
         setText('');
         setMediaPreview(null);
+        setReplyTo(null);
         loadConvos();
       } else {
         const error = await res.json();
         alert(`Ошибка отправки: ${error.error || 'Неизвестная ошибка'}`);
       }
-    } catch (err) {
-      alert('Ошибка отправки сообщения');
-    } finally {
-      setSending(false);
-    }
+    } catch { alert('Ошибка отправки сообщения'); }
+    finally { setSending(false); }
+  };
+
+  const handleEditMsg = async (msgId, content) => {
+    const res = await api(`/api/messages/${msgId}`, { method: 'PUT', body: JSON.stringify({ content }) });
+    if (res.ok) setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content, edited: 1 } : m));
+  };
+
+  const handleDeleteMsg = async (msgId) => {
+    const res = await api(`/api/messages/${msgId}`, { method: 'DELETE' });
+    if (res.ok) setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted: 1, content: null } : m));
   };
 
   // Real-time messages via WS
@@ -317,7 +362,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
     };
     window.addEventListener('ws_new_message', handler);
 
-    // Handle read receipts — update message read status
+    // Handle read receipts
     const readHandler = (e) => {
       const { readerId } = e.detail;
       setMessages(prev => prev.map(m =>
@@ -326,9 +371,23 @@ export default function Messages({ user, initialChat, onClearInitial }) {
     };
     window.addEventListener('ws_read_update', readHandler);
 
+    // Handle edit/delete
+    const editHandler = (e) => {
+      const { msgId, content } = e.detail;
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content, edited: 1 } : m));
+    };
+    const deleteHandler = (e) => {
+      const { msgId } = e.detail;
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted: 1, content: null } : m));
+    };
+    window.addEventListener('ws_message_edited', editHandler);
+    window.addEventListener('ws_message_deleted', deleteHandler);
+
     return () => {
       window.removeEventListener('ws_new_message', handler);
       window.removeEventListener('ws_read_update', readHandler);
+      window.removeEventListener('ws_message_edited', editHandler);
+      window.removeEventListener('ws_message_deleted', deleteHandler);
     };
   }, [activeUser, user.id, loadConvos]);
 
@@ -436,12 +495,24 @@ export default function Messages({ user, initialChat, onClearInitial }) {
                         {showAvatar && <Avatar user={activeUser} size={28} />}
                       </div>
                     )}
-                    <MessageBubble m={m} isMine={isMine} accent={accent} activeUser={activeUser} />
+                    <MessageBubble m={m} isMine={isMine} accent={accent}
+                      onReply={setReplyTo} onEdit={handleEditMsg} onDelete={handleDeleteMsg} />
                   </div>
                 );
               })}
               <div ref={bottomRef} />
             </div>
+
+            {/* Reply preview bar */}
+            {replyTo && (
+              <div className="msg-reply-bar">
+                <div className="msg-reply-bar-content">
+                  <span className="msg-reply-bar-name">{replyTo.display_name || replyTo.username || 'Сообщение'}</span>
+                  <span className="msg-reply-bar-text">{replyTo.content ? replyTo.content.slice(0, 80) : '📎 Медиа'}</span>
+                </div>
+                <button className="msg-reply-bar-close" onClick={() => setReplyTo(null)}><X size={14} /></button>
+              </div>
+            )}
 
             {/* Media preview bar */}
             {mediaPreview && (
