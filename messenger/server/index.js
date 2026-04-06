@@ -65,6 +65,32 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/groups', groupsRoutes);
 
+// ── Public status endpoint (no auth) ─────────────────────────────────────────
+app.get('/api/status', (req, res) => {
+  const db = require('./db');
+  const ws = require('./ws');
+  const startTime = process.uptime();
+  
+  const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  const totalMessages = db.prepare('SELECT COUNT(*) as c FROM messages').get().c;
+  const onlineNow = ws.getOnlineUsers().length;
+  
+  res.json({
+    status: 'operational',
+    uptime: Math.floor(startTime),
+    onlineUsers: onlineNow,
+    totalUsers,
+    totalMessages,
+    timestamp: new Date().toISOString(),
+    services: [
+      { id: 'api', name: 'API сервер', status: 'operational' },
+      { id: 'ws', name: 'WebSocket', status: 'operational' },
+      { id: 'db', name: 'База данных', status: 'operational' },
+      { id: 'media', name: 'Медиа сервис', status: 'operational' },
+    ],
+  });
+});
+
 // ── GIF proxy via Tenor ───────────────────────────────────────────────────────
 function httpsGet(url) {
   return new Promise((resolve, reject) => {

@@ -415,7 +415,134 @@ body::after {
   margin-top: 0.4rem;
 }
 
-/* ── Static pages (Status, Cookies, Terms, Privacy) ── */
+/* ── Status page (uptime bars) ── */
+.status-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+.status-page-inner {
+  width: 100%;
+  max-width: 860px;
+}
+.status-top-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: #444;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+.status-main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.status-main-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.status-dot-ok { background: #69db7c; box-shadow: 0 0 8px #69db7c88; }
+.status-dot-err { background: #ff6b6b; box-shadow: 0 0 8px #ff6b6b88; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.status-main-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+.status-updated { font-size: 0.82rem; color: #555; }
+
+.status-stats-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem 1.25rem;
+  background: rgba(17,17,17,0.8);
+  border: 1px solid #1a1a1a;
+  border-radius: 12px;
+}
+.status-stat { display: flex; flex-direction: column; gap: 0.2rem; }
+.status-stat-val { font-size: 1.3rem; font-weight: 700; color: #fff; }
+.status-stat-label { font-size: 0.72rem; color: #444; }
+
+.status-services { display: flex; flex-direction: column; gap: 0; }
+.status-service-row {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+.status-service-row:last-child { border-bottom: none; }
+.status-service-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+.status-service-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.status-service-desc { font-size: 0.78rem; color: #444; display: block; }
+.status-service-uptime { font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+
+.uptime-bar-wrap { width: 100%; }
+.uptime-bar {
+  display: flex;
+  gap: 2px;
+  height: 32px;
+  align-items: stretch;
+}
+.uptime-bar-day {
+  flex: 1;
+  border-radius: 2px;
+  min-width: 3px;
+  transition: opacity 0.15s;
+  cursor: default;
+}
+.uptime-bar-day:hover { opacity: 0.7; }
+.uptime-ok { background: #2d6a4f; }
+.uptime-degraded { background: #b5830a; }
+.uptime-down { background: #7f1d1d; }
+.uptime-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  color: #444;
+}
+
+.status-footer-note {
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  color: #333;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .status-main-title { font-size: 1.4rem; }
+  .status-stats-row { gap: 1rem; }
+  .uptime-bar { height: 24px; }
+}
 .static-page {
   min-height: 100dvh;
   display: flex;

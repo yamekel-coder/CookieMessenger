@@ -13,7 +13,8 @@ if (fs.existsSync(envPath)) {
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
+const cookieParser = require('cookie-parser');
+const { router: authRoutes } = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const settingsRoutes = require('./routes/settings');
 const feedRoutes = require('./routes/feed');
@@ -22,6 +23,7 @@ const messagesRoutes = require('./routes/messages');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const rolesRoutes = require('./routes/roles');
+const groupsRoutes = require('./routes/groups');
 const ws = require('./ws');
 const { securityHeaders, apiLimiter, sanitizeBody } = require('./middleware/security');
 
@@ -32,8 +34,14 @@ const PORT = process.env.PORT || 3001;
 // ── Security headers on every response ───────────────────────────────────────
 app.use(securityHeaders);
 
-// ── CORS — allow all origins for VDS deployment ──────────────────────────────
-app.use(cors());
+// ── CORS — allow credentials for cookies ─────────────────────────────────────
+app.use(cors({
+  origin: process.env.FRONTEND_URL || true, // Allow all in dev, specific in prod
+  credentials: true, // Allow cookies
+}));
+
+// ── Cookie parser ─────────────────────────────────────────────────────────────
+app.use(cookieParser());
 
 // ── Body parsing ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '100mb' }));
@@ -55,6 +63,33 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/roles', rolesRoutes);
+app.use('/api/groups', groupsRoutes);
+
+// ── Public status endpoint (no auth) ─────────────────────────────────────────
+app.get('/api/status', (req, res) => {
+  const db = require('./db');
+  const ws = require('./ws');
+  const startTime = process.uptime();
+  
+  const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  const totalMessages = db.prepare('SELECT COUNT(*) as c FROM messages').get().c;
+  const onlineNow = ws.getOnlineUsers().length;
+  
+  res.json({
+    status: 'operational',
+    uptime: Math.floor(startTime),
+    onlineUsers: onlineNow,
+    totalUsers,
+    totalMessages,
+    timestamp: new Date().toISOString(),
+    services: [
+      { id: 'api', name: 'API сервер', status: 'operational' },
+      { id: 'ws', name: 'WebSocket', status: 'operational' },
+      { id: 'db', name: 'База данных', status: 'operational' },
+      { id: 'media', name: 'Медиа сервис', status: 'operational' },
+    ],
+  });
+});
 
 // ── GIF proxy via Tenor ───────────────────────────────────────────────────────
 function httpsGet(url) {
@@ -104,8 +139,18 @@ app.get('/api/gifs', apiLimiter, async (req, res) => {
 // Serve built frontend if dist exists (production / pterodactyl)
 const distPath = require('path').join(__dirname, '../client/dist');
 if (require('fs').existsSync(distPath)) {
-  app.use(require('express').static(distPath));
+  app.use(require('express').static(distPath, {
+    maxAge: '1y',
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    },
+  }));
   app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(require('path').join(distPath, 'index.html'));
   });
 } else {
