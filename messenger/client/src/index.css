@@ -4681,10 +4681,11 @@ body::after {
 
 /* ── Friends page ─────────────────────────────────────────────────────────── */
 [data-theme="light"] .friends-page { background: var(--bg); color: var(--text); }
-[data-theme="light"] .friends-tabs { background: var(--bg3); border-color: var(--border); }
-[data-theme="light"] .friends-tab-btn { color: var(--text3); background: transparent; }
-[data-theme="light"] .friends-tab-btn.active { background: var(--bg4); color: var(--text); }
-[data-theme="light"] .friends-tab-btn:hover { background: var(--bg4); }
+[data-theme="light"] .friends-tabs { background: #f0f0f0 !important; border-color: #ddd !important; }
+[data-theme="light"] .fr-tab { color: #666 !important; }
+[data-theme="light"] .fr-tab:hover { background: #e0e0e0 !important; color: #333 !important; }
+[data-theme="light"] .fr-tab.active { background: #fff !important; color: #111 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+[data-theme="light"] .fr-tab-count { background: #e0e0e0 !important; color: #555 !important; }
 [data-theme="light"] .friend-card,
 [data-theme="light"] .friend-item,
 [data-theme="light"] .friends-list-item { background: var(--bg3) !important; border-color: var(--border) !important; color: var(--text) !important; }
@@ -4935,10 +4936,21 @@ body::after {
 [data-theme="light"] .adm-broadcast-card,
 [data-theme="light"] .settings-card,
 [data-theme="light"] .auth-container,
-[data-theme="light"] .setup-card {
+[data-theme="light"] .setup-card,
+[data-theme="light"] .changelog-modal,
+[data-theme="light"] .changelog-overlay,
+[data-theme="light"] .cropper-modal {
   background: var(--bg3) !important;
   border-color: var(--border) !important;
 }
+
+/* Admin stat icons in light theme */
+[data-theme="light"] .adm-stat-icon {
+  background: var(--bg4) !important;
+}
+[data-theme="light"] .adm-stat-value { color: var(--text) !important; }
+[data-theme="light"] .adm-stat-label { color: var(--text3) !important; }
+[data-theme="light"] .adm-stat-sub { color: var(--text4) !important; }
 
 [data-theme="light"] .profile-page,
 [data-theme="light"] .messages-page,
