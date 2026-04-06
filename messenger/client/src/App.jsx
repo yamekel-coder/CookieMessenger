@@ -4,6 +4,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SetupProfile from './pages/SetupProfile';
 import Profile from './pages/Profile';
+import Status from './pages/Status';
+import Cookies from './pages/Cookies';
 import { wsConnect, wsDisconnect } from './hooks/useWebSocket';
 
 export default function App() {
@@ -107,6 +109,8 @@ export default function App() {
             : <Navigate to="/login" />
         }
       />
+      <Route path="/status" element={<Status />} />
+      <Route path="/cookies" element={<Cookies />} />
       <Route path="*" element={<Navigate to={user ? '/profile' : '/login'} />} />
     </Routes>
   );

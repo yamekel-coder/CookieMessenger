@@ -415,6 +415,107 @@ body::after {
   margin-top: 0.4rem;
 }
 
+/* ── Static pages (Status, Cookies, Terms, Privacy) ── */
+.static-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+.static-container {
+  width: 100%;
+  max-width: 720px;
+  background: rgba(17,17,17,0.9);
+  border: 1px solid #222;
+  border-radius: 16px;
+  padding: 2rem;
+}
+.static-back {
+  display: inline-block;
+  color: #555;
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+  transition: color 0.2s;
+}
+.static-back:hover { color: #aaa; }
+.static-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+.static-date { font-size: 0.8rem; color: #444; margin-bottom: 2rem; }
+.static-content h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ccc;
+  margin: 1.5rem 0 0.5rem;
+}
+.static-content p {
+  font-size: 0.9rem;
+  color: #888;
+  line-height: 1.7;
+  margin-bottom: 0.5rem;
+}
+.static-content a { color: #74c0fc; }
+
+/* Status page */
+.status-header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.status-overall {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.35rem 0.85rem; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+}
+.status-overall.ok { background: rgba(105,219,124,0.1); color: #69db7c; border: 1px solid rgba(105,219,124,0.2); }
+.status-overall.error { background: rgba(255,107,107,0.1); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.2); }
+.status-overall.checking { background: rgba(255,212,59,0.1); color: #ffd43b; border: 1px solid rgba(255,212,59,0.2); }
+.status-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+.status-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.85rem 1rem; background: #111; border: 1px solid #1a1a1a; border-radius: 10px;
+}
+.status-row-info { display: flex; flex-direction: column; gap: 0.2rem; }
+.status-row-name { font-size: 0.9rem; font-weight: 600; color: #ccc; }
+.status-row-desc { font-size: 0.75rem; color: #444; }
+.status-badge {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+}
+.status-ok { background: rgba(105,219,124,0.1); color: #69db7c; }
+.status-error { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+.status-checking { background: rgba(255,212,59,0.1); color: #ffd43b; }
+.status-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.78rem; color: #444; flex-wrap: wrap; gap: 0.5rem;
+}
+.status-refresh {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.45rem 1rem; background: transparent; border: 1px solid #222;
+  border-radius: 8px; color: #666; font-size: 0.82rem; cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.status-refresh:hover { border-color: #444; color: #aaa; }
+.status-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Cookies table */
+.cookies-table { border: 1px solid #1a1a1a; border-radius: 10px; overflow: hidden; margin: 1rem 0; }
+.cookies-row {
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr 2fr;
+  gap: 0.5rem; padding: 0.65rem 0.85rem;
+  font-size: 0.82rem; color: #888; border-bottom: 1px solid #1a1a1a;
+}
+.cookies-row:last-child { border-bottom: none; }
+.cookies-header { background: #111; color: #555; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.cookies-row code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 0.78rem; color: #74c0fc; }
+
+@media (max-width: 600px) {
+  .static-container { padding: 1.25rem; }
+  .cookies-row { grid-template-columns: 1fr 1fr; }
+  .cookies-row span:nth-child(3), .cookies-row span:nth-child(4) { display: none; }
+  .cookies-header span:nth-child(3), .cookies-header span:nth-child(4) { display: none; }
+}
+
 /* Main — offset by sidebar width, fills rest */
 .profile-main {
   margin-left: 240px;
