@@ -4903,11 +4903,10 @@ body::after {
 
 /* Remove dark background image in light theme */
 [data-theme="light"] body::before {
-  background: var(--bg) !important;
-  background-image: none !important;
+  background: #f0f0f0 url('/bg-light.jpg') center/cover no-repeat !important;
 }
 [data-theme="light"] body::after {
-  display: none !important;
+  background: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Restore solid backgrounds for all panels in light theme */
