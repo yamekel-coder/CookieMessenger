@@ -4900,6 +4900,56 @@ body::after {
 [data-theme="light"] *::-webkit-scrollbar-track { background: transparent !important; }
 
 /* ── Beautiful light theme enhancements ──────────────────────────────────── */
+
+/* Remove dark background image in light theme */
+[data-theme="light"] body::before {
+  background: var(--bg) !important;
+  background-image: none !important;
+}
+[data-theme="light"] body::after {
+  display: none !important;
+}
+
+/* Restore solid backgrounds for all panels in light theme */
+[data-theme="light"] .profile-sidebar,
+[data-theme="light"] .profile-main,
+[data-theme="light"] .adm-sidebar,
+[data-theme="light"] .adm-main,
+[data-theme="light"] .msg-sidebar,
+[data-theme="light"] .msg-chat,
+[data-theme="light"] .msg-chat-header,
+[data-theme="light"] .msg-input-area {
+  background: var(--bg3) !important;
+}
+
+[data-theme="light"] .profile-main,
+[data-theme="light"] .adm-main { background: var(--bg) !important; }
+
+[data-theme="light"] .profile-hero,
+[data-theme="light"] .profile-card,
+[data-theme="light"] .post-card,
+[data-theme="light"] .create-post,
+[data-theme="light"] .fr-card,
+[data-theme="light"] .up-hero,
+[data-theme="light"] .adm-stat-card,
+[data-theme="light"] .adm-table-wrap,
+[data-theme="light"] .adm-broadcast-card,
+[data-theme="light"] .settings-card,
+[data-theme="light"] .auth-container,
+[data-theme="light"] .setup-card {
+  background: var(--bg3) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .profile-page,
+[data-theme="light"] .messages-page,
+[data-theme="light"] .friends-page,
+[data-theme="light"] .user-profile,
+[data-theme="light"] .adm-page,
+[data-theme="light"] .settings-page,
+[data-theme="light"] .feed-page,
+[data-theme="light"] .auth-wrapper { background: var(--bg) !important; }
+
 [data-theme="light"] .profile-sidebar {
   background: linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%) !important;
   box-shadow: 2px 0 12px rgba(0,0,0,0.06) !important;
