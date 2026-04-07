@@ -4802,26 +4802,27 @@ body::after {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
-    padding-bottom: 70px;
+    /* Extra padding so last message isn't hidden behind input */
+    padding-bottom: 8px;
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Input area — NOT fixed on mobile, stays at bottom of flex container */
   .msg-input-area {
-    position: fixed;
-    bottom: 4.5rem;
-    left: 0;
-    right: 0;
-    background: rgba(10,10,10,0.95);
-    z-index: 50;
+    position: relative !important;
+    bottom: auto !important;
+    flex-shrink: 0;
+    background: rgba(10,10,10,0.98);
     border-top: 1px solid #1a1a1a;
     padding-bottom: env(safe-area-inset-bottom, 0);
+    z-index: 10;
   }
 
   .msg-back-btn { display: flex !important; }
 
-  .msg-bubble { max-width: 78%; min-width: 100px; }
+  .msg-bubble { max-width: 82%; min-width: 80px; }
 
-  .msg-convo-list { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .msg-convo-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
 }
 
 /* ── Friends on mobile ──────────────────────────────────────────────────── */
@@ -4989,7 +4990,6 @@ body::after {
   .sidebar-item { min-width: 44px; font-size: 0.55rem; padding: 0.25rem 0.4rem; }
   .profile-main { padding-bottom: 4rem; }
   .messages-page { height: calc(100dvh - 3.5rem); }
-  .msg-input-area { bottom: 3.5rem; }
 }
 
 /* ── Very small phones (< 360px) ───────────────────────────────────────── */
@@ -5541,6 +5541,28 @@ body::after {
 }
 .grp-chat .msg-media-preview {
   flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .grp-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .grp-chat .msg-messages {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+  .grp-chat .msg-input-area {
+    position: relative !important;
+    bottom: auto !important;
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 }
 .grp-members {
   flex: 1;
