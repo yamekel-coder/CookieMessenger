@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, X, ArrowLeft, Send, Trash2, Users, Lock, Globe, Heart } from 'lucide-react';
-import VerifiedBadge from '../components/VerifiedBadge';
+import { Plus, Search, X, ArrowLeft, Send, Trash2, Users, Lock, Globe, Heart, Pencil, Eye } from 'lucide-react';
 
 function api(path, opts = {}) {
   return fetch(path, {
@@ -34,22 +33,32 @@ function ChannelAvatar({ channel, size = 44 }) {
   );
 }
 
-function CreateChannelModal({ onClose, onCreated }) {
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [description, setDescription] = useState('');
-  const [type, setType] = useState('public');
+function ChannelFormModal({ initial, onClose, onSave, title }) {
+  const [name, setName] = useState(initial?.name || '');
+  const [username, setUsername] = useState(initial?.username || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [type, setType] = useState(initial?.type || 'public');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const isEdit = !!initial;
 
-  const handleCreate = async () => {
-    if (!name.trim() || !username.trim()) return;
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    if (!isEdit && !username.trim()) return;
     setLoading(true);
     setError('');
-    const res = await api('/api/channels', { method: 'POST', body: JSON.stringify({ name, username, description, type }) });
-    const data = await res.json();
-    if (res.ok) { onCreated(data); onClose(); }
-    else setError(data.error || 'Ошибка');
+    try {
+      const body = isEdit
+        ? { name, description, type }
+        : { name, username, description, type };
+      const res = await api(isEdit ? `/api/channels/${initial.id}` : '/api/channels', {
+        method: isEdit ? 'PUT' : 'POST',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok) { onSave(data); onClose(); }
+      else setError(data.error || 'Ошибка');
+    } catch { setError('Ошибка сети'); }
     setLoading(false);
   };
 
@@ -57,20 +66,22 @@ function CreateChannelModal({ onClose, onCreated }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Создать канал</h3>
+          <h3>{title}</h3>
           <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
           <div className="setup-field">
-            <label>Название канала</label>
+            <label>Название</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Мой канал" maxLength={64} />
           </div>
-          <div className="setup-field">
-            <label>Username (@)</label>
-            <input value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))} placeholder="mychannel" maxLength={32} />
-            <span style={{ fontSize: '0.72rem', color: '#444' }}>Только буквы, цифры и _</span>
-          </div>
+          {!isEdit && (
+            <div className="setup-field">
+              <label>Username (@)</label>
+              <input value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))} placeholder="mychannel" maxLength={32} />
+              <span style={{ fontSize: '0.72rem', color: '#444' }}>Только буквы, цифры и _</span>
+            </div>
+          )}
           <div className="setup-field">
             <label>Описание</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="О чём этот канал..." maxLength={300} rows={3} />
@@ -78,21 +89,19 @@ function CreateChannelModal({ onClose, onCreated }) {
           <div className="setup-field">
             <label>Тип</label>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="button" onClick={() => setType('public')}
-                style={{ flex: 1, padding: '0.6rem', borderRadius: 8, border: `1px solid ${type === 'public' ? '#fff' : '#222'}`, background: 'transparent', color: type === 'public' ? '#fff' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                <Globe size={14} /> Публичный
-              </button>
-              <button type="button" onClick={() => setType('private')}
-                style={{ flex: 1, padding: '0.6rem', borderRadius: 8, border: `1px solid ${type === 'private' ? '#fff' : '#222'}`, background: 'transparent', color: type === 'private' ? '#fff' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-                <Lock size={14} /> Приватный
-              </button>
+              {['public', 'private'].map(t => (
+                <button key={t} type="button" onClick={() => setType(t)}
+                  style={{ flex: 1, padding: '0.6rem', borderRadius: 8, border: `1px solid ${type === t ? '#fff' : '#222'}`, background: 'transparent', color: type === t ? '#fff' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                  {t === 'public' ? <><Globe size={14} /> Публичный</> : <><Lock size={14} /> Приватный</>}
+                </button>
+              ))}
             </div>
           </div>
         </div>
         <div className="modal-footer">
           <button className="btn-back" onClick={onClose}>Отмена</button>
-          <button className="btn-next" onClick={handleCreate} disabled={loading || !name.trim() || !username.trim()} style={{ flex: 1 }}>
-            {loading ? 'Создание...' : 'Создать'}
+          <button className="btn-next" onClick={handleSave} disabled={loading || !name.trim()} style={{ flex: 1 }}>
+            {loading ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать'}
           </button>
         </div>
       </div>
@@ -106,6 +115,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const bottomRef = useRef();
   const isOwner = channel.owner_id === user.id;
 
@@ -119,7 +129,55 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
   }, [channel.id]);
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
-  useEffect(() => { setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' }), 50); }, [posts.length]);
+
+  // Real-time WS events
+  useEffect(() => {
+    const onPost = (e) => {
+      if (e.detail.channelId !== channel.id) return;
+      setPosts(prev => prev.find(p => p.id === e.detail.post.id) ? prev : [e.detail.post, ...prev]);
+    };
+    const onDeleted = (e) => {
+      if (e.detail.channelId !== channel.id) return;
+      setPosts(prev => prev.filter(p => p.id !== e.detail.postId));
+    };
+    const onReaction = (e) => {
+      if (e.detail.channelId !== channel.id) return;
+      setPosts(prev => prev.map(p => p.id === e.detail.postId
+        ? { ...p, reactions_count: e.detail.count, my_reaction: e.detail.reacted && e.detail.emoji === '👍' ? e.detail.emoji : (e.detail.reacted ? p.my_reaction : null) }
+        : p
+      ));
+    };
+    const onUpdated = (e) => {
+      if (e.detail.id !== channel.id) return;
+      setChannel(e.detail);
+    };
+    window.addEventListener('ws_channel_post', onPost);
+    window.addEventListener('ws_channel_post_deleted', onDeleted);
+    window.addEventListener('ws_channel_reaction', onReaction);
+    window.addEventListener('ws_channel_updated', onUpdated);
+    return () => {
+      window.removeEventListener('ws_channel_post', onPost);
+      window.removeEventListener('ws_channel_post_deleted', onDeleted);
+      window.removeEventListener('ws_channel_reaction', onReaction);
+      window.removeEventListener('ws_channel_updated', onUpdated);
+    };
+  }, [channel.id]);
+
+  // Register view when post appears
+  const registeredViews = useRef(new Set());
+  useEffect(() => {
+    if (!posts.length) return;
+    posts.forEach(post => {
+      if (!registeredViews.current.has(post.id)) {
+        registeredViews.current.add(post.id);
+        api(`/api/channels/${channel.id}/posts/${post.id}/view`, { method: 'POST' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data) setPosts(prev => prev.map(p => p.id === post.id ? { ...p, views: data.views } : p));
+          }).catch(() => {});
+      }
+    });
+  }, [posts.length, channel.id]);
 
   const handleSubscribe = async () => {
     const res = await api(`/api/channels/${channel.id}/subscribe`, { method: 'POST' });
@@ -152,7 +210,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
       const data = await res.json();
       setPosts(prev => prev.map(p => p.id === postId ? {
         ...p,
-        reactions_count: p.reactions_count + (data.reacted ? 1 : -1),
+        reactions_count: data.count,
         my_reaction: data.reacted ? data.emoji : null,
       } : p));
     }
@@ -170,6 +228,11 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
           </div>
           <span className="msg-chat-username">{channel.subscribers_count} подписчиков</span>
         </div>
+        {isOwner && (
+          <button className="ch-sub-btn" onClick={() => setShowEdit(true)} title="Редактировать">
+            <Pencil size={14} />
+          </button>
+        )}
         {!isOwner && (
           <button className={`ch-sub-btn ${channel.is_subscribed ? 'active' : ''}`} onClick={handleSubscribe}>
             {channel.is_subscribed ? 'Отписаться' : 'Подписаться'}
@@ -182,7 +245,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
         {!loading && posts.length === 0 && (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#444' }}>
             <p>Постов пока нет</p>
-            {isOwner && <span style={{ fontSize: '0.85rem' }}>Опубликуйте первый пост</span>}
+            {isOwner && <span style={{ fontSize: '0.85rem' }}>Напишите первый пост ниже</span>}
           </div>
         )}
         {posts.map(post => (
@@ -191,7 +254,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
               <ChannelAvatar channel={channel} size={32} />
               <div style={{ flex: 1 }}>
                 <span className="ch-post-channel">{channel.name}</span>
-                <span className="ch-post-time">{timeAgo(post.created_at)}</span>
+                <span className="ch-post-time"> · {timeAgo(post.created_at)}</span>
               </div>
               {isOwner && (
                 <button className="ch-post-delete" onClick={() => handleDelete(post.id)} title="Удалить">
@@ -206,7 +269,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
                 <Heart size={14} fill={post.my_reaction ? 'currentColor' : 'none'} />
                 {post.reactions_count > 0 && <span>{post.reactions_count}</span>}
               </button>
-              <span className="ch-post-views">{post.views || 0} просмотров</span>
+              <span className="ch-post-views"><Eye size={12} /> {post.views || 0}</span>
             </div>
           </div>
         ))}
@@ -228,6 +291,15 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
           </button>
         </div>
       )}
+
+      {showEdit && (
+        <ChannelFormModal
+          initial={channel}
+          title="Редактировать канал"
+          onClose={() => setShowEdit(false)}
+          onSave={(updated) => setChannel(updated)}
+        />
+      )}
     </div>
   );
 }
@@ -235,7 +307,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
 export default function Channels({ user }) {
   const [channels, setChannels] = useState({ publicChannels: [], myChannels: [] });
   const [activeChannel, setActiveChannel] = useState(null);
-  const [tab, setTab] = useState('all'); // all | my
+  const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -247,6 +319,13 @@ export default function Channels({ user }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Real-time: new post notification → refresh my channels list
+  useEffect(() => {
+    const handler = () => load();
+    window.addEventListener('ws_channel_post', handler);
+    return () => window.removeEventListener('ws_channel_post', handler);
+  }, [load]);
 
   useEffect(() => {
     if (!search) { setSearchResults([]); return; }
@@ -291,12 +370,9 @@ export default function Channels({ user }) {
         {searching && <div style={{ padding: '1rem', color: '#444', fontSize: '0.85rem' }}>Поиск...</div>}
         {!searching && displayChannels.length === 0 && (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#444' }}>
-            {tab === 'my' && !search ? (
-              <>
-                <p style={{ marginBottom: '0.5rem' }}>Вы не подписаны ни на один канал</p>
-                <span style={{ fontSize: '0.82rem' }}>Найдите интересные каналы во вкладке «Все»</span>
-              </>
-            ) : <p>Каналов не найдено</p>}
+            {tab === 'my' && !search
+              ? <><p style={{ marginBottom: '0.5rem' }}>Вы не подписаны ни на один канал</p><span style={{ fontSize: '0.82rem' }}>Найдите каналы во вкладке «Все»</span></>
+              : <p>Каналов не найдено</p>}
           </div>
         )}
         {displayChannels.map(ch => (
@@ -305,7 +381,7 @@ export default function Channels({ user }) {
             <div className="ch-item-info">
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span className="ch-item-name">{ch.name}</span>
-                {ch.type === 'private' ? <Lock size={11} style={{ color: '#555' }} /> : null}
+                {ch.type === 'private' && <Lock size={11} style={{ color: '#555' }} />}
               </div>
               <span className="ch-item-username">@{ch.username}</span>
               {ch.description && <span className="ch-item-desc">{ch.description.slice(0, 60)}{ch.description.length > 60 ? '...' : ''}</span>}
@@ -318,7 +394,13 @@ export default function Channels({ user }) {
         ))}
       </div>
 
-      {showCreate && <CreateChannelModal onClose={() => setShowCreate(false)} onCreated={(ch) => { setChannels(prev => ({ ...prev, myChannels: [ch, ...prev.myChannels] })); setActiveChannel(ch); }} />}
+      {showCreate && (
+        <ChannelFormModal
+          title="Создать канал"
+          onClose={() => setShowCreate(false)}
+          onSave={(ch) => { setChannels(prev => ({ ...prev, myChannels: [ch, ...prev.myChannels] })); setActiveChannel(ch); }}
+        />
+      )}
     </div>
   );
 }

@@ -16,15 +16,27 @@ router.get('/', auth, (req, res) => {
     ORDER BY b.created_at DESC
   `).all(req.user.id);
 
-  // Enrich with likes/comments
-  const enriched = bookmarks.map(post => {
-    const likes = db.prepare('SELECT COUNT(*) as c FROM likes WHERE post_id = ?').get(post.id).c;
-    const liked = !!db.prepare('SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?').get(post.id, req.user.id);
-    const commentsCount = db.prepare('SELECT COUNT(*) as c FROM comments WHERE post_id = ?').get(post.id).c;
-    return { ...post, likes, liked, commentsCount };
-  });
+  if (!bookmarks.length) return res.json([]);
 
-  res.json(enriched);
+  const ids = bookmarks.map(p => p.id);
+  const ph = ids.map(() => '?').join(',');
+
+  const likesMap = Object.fromEntries(
+    db.prepare(`SELECT post_id, COUNT(*) as c FROM likes WHERE post_id IN (${ph}) GROUP BY post_id`).all(...ids).map(r => [r.post_id, r.c])
+  );
+  const likedSet = new Set(
+    db.prepare(`SELECT post_id FROM likes WHERE post_id IN (${ph}) AND user_id = ?`).all(...ids, req.user.id).map(r => r.post_id)
+  );
+  const commentsMap = Object.fromEntries(
+    db.prepare(`SELECT post_id, COUNT(*) as c FROM comments WHERE post_id IN (${ph}) GROUP BY post_id`).all(...ids).map(r => [r.post_id, r.c])
+  );
+
+  res.json(bookmarks.map(post => ({
+    ...post,
+    likes: likesMap[post.id] || 0,
+    liked: likedSet.has(post.id),
+    commentsCount: commentsMap[post.id] || 0,
+  })));
 });
 
 // POST /api/bookmarks/:postId — toggle bookmark
