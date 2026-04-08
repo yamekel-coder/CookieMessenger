@@ -125,34 +125,35 @@ body::after {
   color: #888; text-transform: uppercase; letter-spacing: 0.5px;
 }
 
-.input-wrapper { position: relative; }
+.input-wrapper { position: relative; display: block; }
 
-.input-wrapper svg {
+.input-wrapper > svg {
   position: absolute; left: 0.9rem; top: 50%;
   transform: translateY(-50%); color: #444; pointer-events: none;
 }
 
 .form-group input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.6rem;
+  padding: 0.75rem 2.8rem 0.75rem 2.6rem;
   border-radius: 10px; border: 1px solid #222;
   background: #0a0a0a; color: #f0f0f0;
   font-size: 0.95rem; font-family: 'Inter', sans-serif;
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .form-group input::placeholder { color: #333; }
 .form-group input:focus { border-color: #444; box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
 
 .password-toggle {
-  position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
   background: none; border: none; color: #444; cursor: pointer;
-  padding: 0.2rem; display: flex; align-items: center; transition: color 0.2s;
-  z-index: 1;
+  padding: 0.25rem; display: flex; align-items: center; transition: color 0.2s;
+  z-index: 2; line-height: 1;
 }
 .password-toggle:hover { color: #888; }
 
-/* Ensure password input has space for the eye icon */
+/* Remove the separate padding-right rule — already in form-group input */
 .input-wrapper input[type="password"],
 .input-wrapper input[type="text"] {
   padding-right: 2.8rem;
