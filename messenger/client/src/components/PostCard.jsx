@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Trash2, Send, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Send, ChevronDown, ChevronUp, Eye, Bookmark } from 'lucide-react';
 import VerifiedBadge from './VerifiedBadge';
 
 function timeAgo(str) {
@@ -184,6 +184,7 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
   const [commentsCount, setCommentsCount] = useState(post.commentsCount || 0);
   const [viewCount, setViewCount] = useState(post.views || 0);
   const [viewRegistered, setViewRegistered] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
   const cardRef = useRef(null);
   const accent = post.accent_color || '#fff';
 
@@ -349,6 +350,17 @@ export default function PostCard({ post, currentUserId, onLike, onDelete, onVote
           <MessageCircle size={16} />
           <span>{commentsCount}</span>
           {showComments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+        <button
+          className={`post-action ${bookmarked ? 'post-action-active' : ''}`}
+          onClick={async () => {
+            const res = await fetch(`/api/bookmarks/${post.id}`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+            if (res.ok) { const d = await res.json(); setBookmarked(d.bookmarked); }
+          }}
+          title={bookmarked ? 'Убрать из закладок' : 'В закладки'}
+          style={bookmarked ? { color: accent } : {}}
+        >
+          <Bookmark size={16} fill={bookmarked ? accent : 'none'} />
         </button>
         <div className="post-views">
           <Eye size={16} />

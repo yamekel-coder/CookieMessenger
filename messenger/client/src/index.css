@@ -5587,6 +5587,62 @@ body::after {
 [data-theme="light"] .grp-chat .msg-messages { background: var(--bg); }
 [data-theme="light"] .grp-chat .msg-input-area { background: var(--bg3); border-color: var(--border); }
 
+/* ── Channels ────────────────────────────────────────────────────────────── */
+.ch-page { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.ch-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0.5rem; flex-shrink: 0; }
+.ch-title { font-size: 1.1rem; font-weight: 600; color: #fff; }
+.ch-create-btn { background: none; border: 1px solid #222; border-radius: 8px; color: #666; cursor: pointer; padding: 6px 8px; display: flex; align-items: center; transition: all 0.15s; }
+.ch-create-btn:hover { border-color: #444; color: #aaa; }
+
+.ch-search-wrap { display: flex; align-items: center; gap: 0.5rem; margin: 0 1.25rem 0.5rem; padding: 0.5rem 0.75rem; background: #111; border: 1px solid #1a1a1a; border-radius: 10px; }
+.ch-search-icon { color: #444; flex-shrink: 0; }
+.ch-search-input { flex: 1; background: transparent; border: none; outline: none; color: #f0f0f0; font-size: 0.85rem; font-family: 'Inter', sans-serif; }
+.ch-search-input::placeholder { color: #333; }
+.ch-search-clear { background: none; border: none; color: #444; cursor: pointer; display: flex; align-items: center; }
+
+.ch-tabs { display: flex; gap: 4px; padding: 0 1.25rem 0.5rem; flex-shrink: 0; }
+.ch-tab { padding: 0.35rem 1rem; border-radius: 20px; border: 1px solid #222; background: transparent; color: #555; font-size: 0.82rem; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.15s; }
+.ch-tab.active { background: #1e1e1e; border-color: #333; color: #fff; }
+.ch-tab:hover:not(.active) { border-color: #333; color: #888; }
+
+.ch-list { flex: 1; overflow-y: auto; padding: 0 0.75rem 1rem; display: flex; flex-direction: column; gap: 4px; }
+.ch-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.75rem 0.85rem; background: transparent; border: none; border-radius: 10px; cursor: pointer; text-align: left; width: 100%; transition: background 0.15s; }
+.ch-item:hover { background: #111; }
+.ch-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ch-item-name { font-size: 0.9rem; font-weight: 600; color: #ccc; }
+.ch-item-username { font-size: 0.75rem; color: #444; }
+.ch-item-desc { font-size: 0.78rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-item-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.ch-item-subs { display: flex; align-items: center; gap: 3px; font-size: 0.72rem; color: #444; }
+.ch-item-badge { font-size: 0.65rem; padding: 2px 6px; background: rgba(105,219,124,0.1); color: #69db7c; border-radius: 10px; }
+
+/* Channel view */
+.ch-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.ch-view-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a1a; background: #0d0d0d; flex-shrink: 0; }
+.ch-sub-btn { padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid #333; background: transparent; color: #888; font-size: 0.82rem; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.ch-sub-btn:hover { border-color: #555; color: #ccc; }
+.ch-sub-btn.active { border-color: #ff6b6b44; color: #ff6b6b; }
+
+.ch-posts { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; -webkit-overflow-scrolling: touch; }
+.ch-post { background: rgba(17,17,17,0.9); border: 1px solid #1a1a1a; border-radius: 12px; padding: 1rem; }
+.ch-post-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+.ch-post-channel { font-size: 0.88rem; font-weight: 600; color: #ccc; flex: 1; }
+.ch-post-time { font-size: 0.72rem; color: #444; }
+.ch-post-delete { background: none; border: none; color: #333; cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; transition: color 0.15s; }
+.ch-post-delete:hover { color: #ff6b6b; }
+.ch-post-content { font-size: 0.9rem; color: #ccc; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-wrap; }
+.ch-post-media { width: 100%; border-radius: 8px; max-height: 400px; object-fit: cover; margin-bottom: 0.75rem; }
+.ch-post-footer { display: flex; align-items: center; justify-content: space-between; }
+.ch-react-btn { display: flex; align-items: center; gap: 0.35rem; background: none; border: 1px solid #1a1a1a; border-radius: 20px; color: #555; font-size: 0.78rem; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+.ch-react-btn:hover { border-color: #333; color: #888; }
+.ch-react-btn.active { border-color: #ff6b6b44; color: #ff6b6b; }
+.ch-post-views { font-size: 0.72rem; color: #333; }
+
+.ch-input-area { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid #1a1a1a; background: #0d0d0d; flex-shrink: 0; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0)); }
+
+/* Bookmarks page */
+.bookmarks-page { padding: 0; }
+
 /* ── Discord OAuth & Captcha ─────────────────────────────────────────────── */
 .btn-discord {
   width: 100%;

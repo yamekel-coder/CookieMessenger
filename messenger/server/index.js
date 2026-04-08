@@ -24,6 +24,8 @@ const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const rolesRoutes = require('./routes/roles');
 const groupsRoutes = require('./routes/groups');
+const channelsRoutes = require('./routes/channels');
+const bookmarksRoutes = require('./routes/bookmarks');
 const ws = require('./ws');
 const { securityHeaders, apiLimiter, sanitizeBody } = require('./middleware/security');
 
@@ -64,6 +66,8 @@ app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/groups', groupsRoutes);
+app.use('/api/channels', channelsRoutes);
+app.use('/api/bookmarks', bookmarksRoutes);
 
 // ── Public status endpoint (no auth) ─────────────────────────────────────────
 app.get('/api/status', (req, res) => {

@@ -4,7 +4,7 @@ import {
   User, Camera, ImagePlus, FileText, Palette, Check,
   Pencil, X, Save, AtSign, Calendar, Shield, LogOut, Rss,
   Users, MessageSquare, FileImage, Loader, ShieldAlert, UsersRound,
-  Sparkles, Music, Upload,
+  Sparkles, Music, Upload, Bookmark,
 } from 'lucide-react';
 import ImageCropper from '../components/ImageCropper';
 import ChangelogModal from '../components/ChangelogModal';
@@ -21,6 +21,8 @@ import Feed from './Feed';
 import Friends from './Friends';
 import Messages from './Messages';
 import Groups from './Groups';
+import Channels from './Channels';
+import Bookmarks from './Bookmarks';
 
 const ACCENT_COLORS = [
   '#ffffff', '#a8a8a8', '#ff6b6b', '#ffa94d',
@@ -493,6 +495,14 @@ export default function Profile({ user, onUpdate, onLogout }) {
             <UsersRound size={17} /> Группы
             {unreadGroups > 0 && <span className="sidebar-badge">{unreadGroups}</span>}
           </button>
+          <button className={`sidebar-item ${tab === 'channels' ? 'active' : ''}`}
+            onClick={() => setTab('channels')} style={tab === 'channels' ? { color: accent } : {}}>
+            <Rss size={17} /> Каналы
+          </button>
+          <button className={`sidebar-item ${tab === 'bookmarks' ? 'active' : ''}`}
+            onClick={() => setTab('bookmarks')} style={tab === 'bookmarks' ? { color: accent } : {}}>
+            <Bookmark size={17} /> Закладки
+          </button>
           <button className={`sidebar-item ${tab === 'settings' ? 'active' : ''}`}
             onClick={() => setTab('settings')} style={tab === 'settings' ? { color: accent } : {}}>
             <Shield size={17} /> Настройки
@@ -921,6 +931,18 @@ export default function Profile({ user, onUpdate, onLogout }) {
         {tab === 'groups' && (
           <div className="profile-content profile-content--full">
             <Groups user={user} />
+          </div>
+        )}
+
+        {tab === 'channels' && (
+          <div className="profile-content profile-content--full">
+            <Channels user={user} />
+          </div>
+        )}
+
+        {tab === 'bookmarks' && (
+          <div className="profile-content" style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
+            <Bookmarks user={user} onUserClick={(username) => navigate(`/profile/${username}`)} />
           </div>
         )}
 
