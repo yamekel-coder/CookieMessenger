@@ -380,6 +380,10 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
       {tab === 'settings' && isAdmin && (
         <GroupSettings group={group} user={user} onUpdate={g => setGroup(g)} onDelete={handleDelete} />
       )}
+
+      {showReport && (
+        <ReportModal targetType="group" targetId={group.id} onClose={() => setShowReport(false)} />
+      )}
     </div>
   );
 }
@@ -412,10 +416,6 @@ function GroupSettings({ group, user, onUpdate, onDelete }) {
         </button>
       )}
     </div>
-
-    {showReport && (
-      <ReportModal targetType="group" targetId={group.id} onClose={() => setShowReport(false)} />
-    )}
   );
 }
 
