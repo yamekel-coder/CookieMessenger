@@ -71,6 +71,12 @@ router.post('/', auth, validateLengths({ name: 64, username: 32, description: 30
   const existing = db.prepare('SELECT id FROM channels WHERE LOWER(username) = ?').get(username.toLowerCase());
   if (existing) return res.status(409).json({ error: 'Username уже занят' });
 
+  // Validate avatar size (5MB max)
+  if (avatar && avatar.startsWith('data:image/')) {
+    if (Math.ceil((avatar.length * 3) / 4) > 5 * 1024 * 1024)
+      return res.status(400).json({ error: 'Аватарка слишком большая. Максимум 5MB' });
+  }
+
   const result = db.prepare(
     'INSERT INTO channels (owner_id, username, name, description, avatar, type) VALUES (?, ?, ?, ?, ?, ?)'
   ).run(req.user.id, username.toLowerCase(), name.trim(), description || null, avatar || null, type || 'public');
@@ -96,6 +102,13 @@ router.put('/:id', auth, validateLengths({ name: 64, description: 300 }), (req, 
   if (channel.owner_id !== req.user.id) return res.status(403).json({ error: 'Нет прав' });
 
   const { name, description, avatar, type } = req.body;
+
+  // Validate avatar size (5MB max)
+  if (avatar && avatar.startsWith('data:image/')) {
+    if (Math.ceil((avatar.length * 3) / 4) > 5 * 1024 * 1024)
+      return res.status(400).json({ error: 'Аватарка слишком большая. Максимум 5MB' });
+  }
+
   db.prepare(`
     UPDATE channels SET
       name = COALESCE(?, name),
@@ -158,12 +171,12 @@ router.post('/:id/posts', auth, postLimiter, validateLengths({ content: 4000 }),
   if (!channel) return res.status(404).json({ error: 'Канал не найден' });
   if (channel.owner_id !== req.user.id) return res.status(403).json({ error: 'Только владелец может публиковать' });
 
-  const { content, media, media_type } = req.body;
+  const { content, media, media_type, spoiler } = req.body;
   if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустой пост' });
 
   const result = db.prepare(
-    'INSERT INTO channel_posts (channel_id, author_id, content, media, media_type) VALUES (?, ?, ?, ?, ?)'
-  ).run(channel.id, req.user.id, content?.trim() || null, media || null, media_type || null);
+    'INSERT INTO channel_posts (channel_id, author_id, content, media, media_type, spoiler) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(channel.id, req.user.id, content?.trim() || null, media || null, media_type || null, spoiler ? 1 : 0);
 
   const post = db.prepare(`
     SELECT cp.*, u.username, u.display_name, u.avatar, u.accent_color, u.verified, u.animated_name,

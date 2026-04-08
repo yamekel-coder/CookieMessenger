@@ -5638,6 +5638,39 @@ body::after {
 .ch-react-btn.active { border-color: #ff6b6b44; color: #ff6b6b; }
 .ch-post-views { font-size: 0.72rem; color: #333; }
 
+/* Spoiler/censorship */
+.ch-spoiler-wrap {
+  position: relative;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+.ch-spoiler-img {
+  filter: blur(20px);
+  transform: scale(1.05);
+  margin-bottom: 0 !important;
+  display: block;
+  width: 100%;
+}
+.ch-spoiler-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 1rem;
+  flex-direction: column;
+  gap: 0.4rem;
+  user-select: none;
+}
+
 .ch-input-area { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid #1a1a1a; background: #0d0d0d; flex-shrink: 0; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0)); }
 
 /* Bookmarks page */

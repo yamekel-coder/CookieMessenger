@@ -149,6 +149,21 @@ function ChannelFormModal({ initial, onClose, onSave, title }) {
   );
 }
 
+function SpoilerImage({ src, spoiler }) {
+  const [revealed, setRevealed] = useState(false);
+  if (!spoiler || revealed) {
+    return <img src={src} alt="media" className="ch-post-media" onClick={() => {}} />;
+  }
+  return (
+    <div className="ch-spoiler-wrap" onClick={() => setRevealed(true)} title="Нажмите чтобы показать">
+      <img src={src} alt="media" className="ch-post-media ch-spoiler-img" />
+      <div className="ch-spoiler-overlay">
+        <span>🔞 Нажмите чтобы показать</span>
+      </div>
+    </div>
+  );
+}
+
 function ChannelView({ channel: initialChannel, user, onBack }) {
   const [channel, setChannel] = useState(initialChannel);
   const [posts, setPosts] = useState([]);
@@ -156,7 +171,8 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [mediaPreview, setMediaPreview] = useState(null); // { src, type }
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [spoiler, setSpoiler] = useState(false); // { src, type }
   const [showPicker, setShowPicker] = useState(false);
   const [showDesc, setShowDesc] = useState(false);
   const bottomRef = useRef();
@@ -253,13 +269,14 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
     setSending(true);
     const res = await api(`/api/channels/${channel.id}/posts`, {
       method: 'POST',
-      body: JSON.stringify({ content: text.trim() || null, media: mediaPreview?.src || null, media_type: mediaPreview?.type || null }),
+      body: JSON.stringify({ content: text.trim() || null, media: mediaPreview?.src || null, media_type: mediaPreview?.type || null, spoiler: spoiler && !!mediaPreview }),
     });
     if (res.ok) {
       const post = await res.json();
       setPosts(prev => [post, ...prev]);
       setText('');
       setMediaPreview(null);
+      setSpoiler(false);
     }
     setSending(false);
   };
@@ -333,11 +350,8 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
               )}
             </div>
             {post.content && <p className="ch-post-content">{post.content}</p>}
-            {post.media && post.media_type === 'image' && (
-              <img src={post.media} alt="media" className="ch-post-media" />
-            )}
-            {post.media && post.media_type === 'gif' && (
-              <img src={post.media} alt="gif" className="ch-post-media" style={{ borderRadius: 8 }} />
+            {post.media && (post.media_type === 'image' || post.media_type === 'gif') && (
+              <SpoilerImage src={post.media} spoiler={post.spoiler} />
             )}
             {post.media && post.media_type === 'video' && (
               <video src={post.media} controls className="ch-post-media" />
@@ -355,37 +369,43 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
       </div>
 
       {isOwner && (
-        <div className="ch-input-area" style={{ flexDirection: 'column', gap: 0, padding: 0 }}>
+        <div style={{ flexShrink: 0, borderTop: '1px solid #1a1a1a', background: '#0d0d0d', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
           {/* Media preview */}
           {mediaPreview && (
-            <div style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid #1a1a1a' }}>
-              {mediaPreview.type === 'image'
+            <div style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #1a1a1a' }}>
+              {mediaPreview.type === 'image' || mediaPreview.type === 'gif'
                 ? <img src={mediaPreview.src} alt="preview" style={{ height: 60, borderRadius: 6, objectFit: 'cover' }} />
                 : <video src={mediaPreview.src} style={{ height: 60, borderRadius: 6 }} />
               }
-              <button onClick={() => setMediaPreview(null)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer' }}><X size={16} /></button>
+              <button onClick={() => setMediaPreview(null)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
             </div>
           )}
 
           {/* Emoji picker */}
           {showPicker && (
-            <div ref={pickerRef} style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 100 }}>
+            <div ref={pickerRef} style={{ position: 'relative' }}>
               <EmojiPicker
-                onEmoji={(e) => setText(t => t + e)}
-                onSticker={(e) => setText(t => t + e)}
+                onEmoji={(e) => { setText(t => t + e); setShowPicker(false); }}
+                onSticker={(e) => { setText(t => t + e); setShowPicker(false); }}
                 onGif={(gif) => { setMediaPreview({ src: gif.url, type: 'gif' }); setShowPicker(false); }}
               />
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1rem' }}>
             <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={handleMediaPick} />
             <button className="msg-media-btn" onClick={() => fileRef.current.click()} title="Фото/видео">
               <Image size={18} />
             </button>
-            <button className="msg-media-btn" onClick={() => setShowPicker(v => !v)} title="Эмодзи/GIF">
+            <button className="msg-media-btn" onClick={() => setShowPicker(v => !v)} title="Эмодзи/GIF" style={{ color: showPicker ? '#fff' : undefined }}>
               <Smile size={18} />
             </button>
+            {mediaPreview && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: spoiler ? '#ffd43b' : '#555', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} style={{ cursor: 'pointer' }} />
+                Цензура
+              </label>
+            )}
             <input
               className="msg-input"
               placeholder="Написать пост..."

@@ -257,6 +257,7 @@ db.exec(`
     content TEXT,
     media TEXT,
     media_type TEXT,
+    spoiler INTEGER DEFAULT 0,
     views INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
@@ -293,6 +294,10 @@ db.exec(`
 migrate('animated_name', 'TEXT'); // gradient CSS for animated name
 migrate('profile_music', 'TEXT'); // URL to music file
 migrate('verified', 'INTEGER DEFAULT 0'); // blue verified badge
+
+// Channel posts migration
+const chPostCols = db.prepare("PRAGMA table_info(channel_posts)").all().map(c => c.name);
+if (!chPostCols.includes('spoiler')) db.exec('ALTER TABLE channel_posts ADD COLUMN spoiler INTEGER DEFAULT 0');
 
 // Groups
 db.exec(`
