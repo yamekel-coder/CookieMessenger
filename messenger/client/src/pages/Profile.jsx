@@ -68,6 +68,18 @@ export default function Profile({ user, onUpdate, onLogout }) {
     }
   }, [navigate]);
 
+  // When location changes (e.g. navigate('/messages', { state: { chatTarget } }))
+  // update tab and chatTarget accordingly — component may not remount
+  useEffect(() => {
+    const newPathTab = TAB_ROUTES.find(t => location.pathname === `/${t}`);
+    if (newPathTab) {
+      setTab(newPathTab);
+    }
+    if (location.state?.chatTarget) {
+      setChatTarget(location.state.chatTarget);
+    }
+  }, [location.pathname, location.state]);
+
   // Unread counters for sidebar badges
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadGroups, setUnreadGroups] = useState(0);
