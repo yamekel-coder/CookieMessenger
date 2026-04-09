@@ -4782,7 +4782,8 @@ body::after {
 @media (max-width: 768px) {
   .messages-page {
     flex-direction: column;
-    height: calc(100dvh - 4.5rem);
+    /* account for bottom nav (~56px) + safe area */
+    height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px));
     position: relative;
     overflow: hidden;
   }
@@ -4815,19 +4816,19 @@ body::after {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
-    /* Extra padding so last message isn't hidden behind input */
     padding-bottom: 8px;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Input area — NOT fixed on mobile, stays at bottom of flex container */
+  /* Input area — stays at bottom of flex, above the bottom nav */
   .msg-input-area {
     position: relative !important;
     bottom: auto !important;
     flex-shrink: 0;
     background: rgba(10,10,10,0.98);
     border-top: 1px solid #1a1a1a;
-    padding-bottom: env(safe-area-inset-bottom, 0);
+    /* no extra padding — nav is outside this container */
+    padding-bottom: 4px;
     z-index: 10;
   }
 
@@ -5441,6 +5442,26 @@ body::after {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* On mobile, profile-main with messages must fill remaining space above bottom nav */
+@media (max-width: 768px) {
+  .profile-main:has(.profile-content--full) {
+    padding-bottom: 0 !important;
+    height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+
+  .profile-content--full {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .profile-content--full .messages-page {
+    height: 100%;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
