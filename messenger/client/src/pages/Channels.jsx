@@ -30,9 +30,9 @@ function ChannelAvatar({ channel, size = 44 }) {
   return (
     <div style={{
       width: size, height: size, minWidth: size, borderRadius: '50%',
-      backgroundImage: channel.avatar ? `url(${channel.avatar})` : undefined,
+      backgroundImage: channel.avatar ? `url(${channel.avatar})` : 'none',
       backgroundSize: 'cover', backgroundPosition: 'center',
-      background: channel.avatar ? undefined : '#1a1a1a',
+      backgroundColor: channel.avatar ? 'transparent' : '#1a1a1a',
       border: '2px solid #2a2a2a',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.38, color: '#888', flexShrink: 0, fontWeight: 700,
@@ -98,9 +98,9 @@ function ChannelFormModal({ initial, onClose, onSave, title }) {
               onClick={() => avatarRef.current.click()}
               style={{
                 width: 80, height: 80, borderRadius: '50%', cursor: 'pointer',
-                backgroundImage: avatar ? `url(${avatar})` : undefined,
+                backgroundImage: avatar ? `url(${avatar})` : 'none',
                 backgroundSize: 'cover', backgroundPosition: 'center',
-                background: avatar ? undefined : '#1a1a1a',
+                backgroundColor: avatar ? 'transparent' : '#1a1a1a',
                 border: '2px dashed #333', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', color: '#555', fontSize: '0.75rem',
                 flexDirection: 'column', gap: 4, transition: 'border-color 0.2s',

@@ -10,6 +10,9 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import { wsConnect, wsDisconnect } from './hooks/useWebSocket';
 
+// Tab names that map to URL segments
+const TAB_ROUTES = ['feed', 'friends', 'messages', 'groups', 'channels', 'bookmarks', 'settings', 'admin'];
+
 export default function App() {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('user');
@@ -87,6 +90,10 @@ export default function App() {
     setUser(null);
   };
 
+  const profileEl = user
+    ? <Profile user={user} onUpdate={handleUpdate} onLogout={handleLogout} />
+    : <Navigate to="/login" />;
+
   return (
     <Routes>
       <Route path="/login"    element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/profile" />} />
@@ -95,25 +102,15 @@ export default function App() {
         path="/setup"
         element={user ? <SetupProfile onComplete={handleSetupComplete} /> : <Navigate to="/login" />}
       />
-      <Route
-        path="/profile"
-        element={
-          user
-            ? <Profile user={user} onUpdate={handleUpdate} onLogout={handleLogout} />
-            : <Navigate to="/login" />
-        }
-      />
-      <Route
-        path="/profile/:username"
-        element={
-          user
-            ? <Profile user={user} onUpdate={handleUpdate} onLogout={handleLogout} />
-            : <Navigate to="/login" />
-        }
-      />
-      <Route path="/status" element={<Status />} />
+      {/* Main app routes — each tab gets its own URL */}
+      <Route path="/profile"           element={profileEl} />
+      <Route path="/profile/:username" element={profileEl} />
+      {TAB_ROUTES.map(tab => (
+        <Route key={tab} path={`/${tab}`} element={profileEl} />
+      ))}
+      <Route path="/status"  element={<Status />} />
       <Route path="/cookies" element={<Cookies />} />
-      <Route path="/terms" element={<Terms />} />
+      <Route path="/terms"   element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="*" element={<Navigate to={user ? '/profile' : '/login'} />} />
     </Routes>

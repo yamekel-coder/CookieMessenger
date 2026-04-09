@@ -109,14 +109,17 @@ router.put('/:id', auth, validateLengths({ name: 64, description: 300 }), (req, 
       return res.status(400).json({ error: 'Аватарка слишком большая. Максимум 5MB' });
   }
 
+  // avatar: undefined = don't change, null = remove, string = update
+  const newAvatar = avatar !== undefined ? (avatar || null) : channel.avatar;
+
   db.prepare(`
     UPDATE channels SET
       name = COALESCE(?, name),
       description = ?,
-      avatar = COALESCE(?, avatar),
+      avatar = ?,
       type = COALESCE(?, type)
     WHERE id = ?
-  `).run(name?.trim() || null, description ?? channel.description, avatar || null, type || null, channel.id);
+  `).run(name?.trim() || null, description ?? channel.description, newAvatar, type || null, channel.id);
 
   const updated = enrichChannel(channel.id, req.user.id);
   // Notify subscribers about channel update

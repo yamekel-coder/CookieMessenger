@@ -47,6 +47,8 @@ export default function Feed({ user, onOpenChat }) {
 
   useWebSocket({
     new_post: (post) => {
+      // Skip own posts — already added optimistically via handlePost
+      if (post.user_id === user.id) return;
       setPosts(prev => prev.find(p => p.id === post.id) ? prev : [post, ...prev]);
     },
     delete_post: ({ postId }) => {

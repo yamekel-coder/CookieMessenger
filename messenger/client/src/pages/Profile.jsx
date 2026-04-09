@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   User, Camera, ImagePlus, FileText, Palette, Check,
   Pencil, X, Save, AtSign, Calendar, Shield, LogOut, Rss,
@@ -46,11 +46,27 @@ function formatDate(str) {
 export default function Profile({ user, onUpdate, onLogout }) {
   const { username } = useParams();
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
+  // Derive initial tab from URL path
+  const TAB_ROUTES = ['feed', 'friends', 'messages', 'groups', 'channels', 'bookmarks', 'settings', 'admin'];
+  const pathTab = TAB_ROUTES.find(t => location.pathname === `/${t}`);
+
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState('profile');
+  const [tab, setTab] = useState(pathTab || 'profile');
   const [profileTab, setProfileTab] = useState('info');
-  const [chatTarget, setChatTarget] = useState(null);
+  // Support opening chat from UserProfile page via navigation state
+  const [chatTarget, setChatTarget] = useState(location.state?.chatTarget || null);
+
+  // Sync tab → URL
+  const switchTab = useCallback((newTab) => {
+    setTab(newTab);
+    if (newTab === 'profile') {
+      navigate('/profile', { replace: true });
+    } else {
+      navigate(`/${newTab}`, { replace: true });
+    }
+  }, [navigate]);
 
   // Unread counters for sidebar badges
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -417,22 +433,22 @@ export default function Profile({ user, onUpdate, onLogout }) {
             <span>RLC</span>
           </div>
           <nav className="sidebar-nav">
-            <button className="sidebar-item active" onClick={() => navigate('/profile')} style={{ color: user.accent_color || '#fff' }}>
+            <button className="sidebar-item" onClick={() => navigate('/profile')} style={{ color: user.accent_color || '#fff' }}>
               <User size={17} /> Профиль
             </button>
-            <button className="sidebar-item" onClick={() => { navigate('/profile'); }}>
+            <button className="sidebar-item" onClick={() => navigate('/feed')}>
               <Rss size={17} /> Лента
             </button>
-            <button className="sidebar-item" onClick={() => navigate('/profile')}>
+            <button className="sidebar-item" onClick={() => navigate('/friends')}>
               <Users size={17} /> Друзья
             </button>
-            <button className="sidebar-item" onClick={() => navigate('/profile')}>
+            <button className="sidebar-item" onClick={() => navigate('/messages')}>
               <MessageSquare size={17} /> Сообщения
             </button>
-            <button className="sidebar-item" onClick={() => navigate('/profile')}>
+            <button className="sidebar-item" onClick={() => navigate('/groups')}>
               <UsersRound size={17} /> Группы
             </button>
-            <button className="sidebar-item" onClick={() => navigate('/profile')}>
+            <button className="sidebar-item" onClick={() => navigate('/settings')}>
               <Shield size={17} /> Настройки
             </button>
           </nav>
@@ -451,8 +467,10 @@ export default function Profile({ user, onUpdate, onLogout }) {
           <UserProfile
             username={username}
             currentUser={user}
-            onBack={() => navigate('/profile')}
-            onOpenChat={(targetUser) => navigate('/profile')}
+            onBack={() => navigate(-1)}
+            onOpenChat={(targetUser) => {
+              navigate('/messages', { state: { chatTarget: targetUser } });
+            }}
           />
         </main>
         <CallManager currentUser={user} />
@@ -473,43 +491,43 @@ export default function Profile({ user, onUpdate, onLogout }) {
 
         <nav className="sidebar-nav">
           <button className={`sidebar-item ${tab === 'profile' ? 'active' : ''}`}
-            onClick={() => setTab('profile')} style={tab === 'profile' ? { color: accent } : {}}>
+            onClick={() => switchTab('profile')} style={tab === 'profile' ? { color: accent } : {}}>
             <User size={17} /> Профиль
           </button>
           <button className={`sidebar-item ${tab === 'feed' ? 'active' : ''}`}
-            onClick={() => setTab('feed')} style={tab === 'feed' ? { color: accent } : {}}>
+            onClick={() => switchTab('feed')} style={tab === 'feed' ? { color: accent } : {}}>
             <Rss size={17} /> Лента
           </button>
           <button className={`sidebar-item ${tab === 'friends' ? 'active' : ''}`}
-            onClick={() => { setTab('friends'); setPendingFriends(0); }} style={tab === 'friends' ? { color: accent } : {}}>
+            onClick={() => { switchTab('friends'); setPendingFriends(0); }} style={tab === 'friends' ? { color: accent } : {}}>
             <Users size={17} /> Друзья
             {pendingFriends > 0 && <span className="sidebar-badge">{pendingFriends}</span>}
           </button>
           <button className={`sidebar-item ${tab === 'messages' ? 'active' : ''}`}
-            onClick={() => { setTab('messages'); setUnreadMessages(0); }} style={tab === 'messages' ? { color: accent } : {}}>
+            onClick={() => { switchTab('messages'); setUnreadMessages(0); }} style={tab === 'messages' ? { color: accent } : {}}>
             <MessageSquare size={17} /> Сообщения
             {unreadMessages > 0 && <span className="sidebar-badge">{unreadMessages}</span>}
           </button>
           <button className={`sidebar-item ${tab === 'groups' ? 'active' : ''}`}
-            onClick={() => { setTab('groups'); setUnreadGroups(0); }} style={tab === 'groups' ? { color: accent } : {}}>
+            onClick={() => { switchTab('groups'); setUnreadGroups(0); }} style={tab === 'groups' ? { color: accent } : {}}>
             <UsersRound size={17} /> Группы
             {unreadGroups > 0 && <span className="sidebar-badge">{unreadGroups}</span>}
           </button>
           <button className={`sidebar-item ${tab === 'channels' ? 'active' : ''}`}
-            onClick={() => setTab('channels')} style={tab === 'channels' ? { color: accent } : {}}>
+            onClick={() => switchTab('channels')} style={tab === 'channels' ? { color: accent } : {}}>
             <Rss size={17} /> Каналы
           </button>
           <button className={`sidebar-item ${tab === 'bookmarks' ? 'active' : ''}`}
-            onClick={() => setTab('bookmarks')} style={tab === 'bookmarks' ? { color: accent } : {}}>
+            onClick={() => switchTab('bookmarks')} style={tab === 'bookmarks' ? { color: accent } : {}}>
             <Bookmark size={17} /> Закладки
           </button>
           <button className={`sidebar-item ${tab === 'settings' ? 'active' : ''}`}
-            onClick={() => setTab('settings')} style={tab === 'settings' ? { color: accent } : {}}>
+            onClick={() => switchTab('settings')} style={tab === 'settings' ? { color: accent } : {}}>
             <Shield size={17} /> Настройки
           </button>
           {(user.email === 'yamekel0@gmail.com' || isAdmin) && (
             <button className={`sidebar-item ${tab === 'admin' ? 'active' : ''}`}
-              onClick={() => setTab('admin')} style={tab === 'admin' ? { color: '#ff6b6b' } : { color: '#ff6b6b', opacity: 0.6 }}>
+              onClick={() => switchTab('admin')} style={tab === 'admin' ? { color: '#ff6b6b' } : { color: '#ff6b6b', opacity: 0.6 }}>
               <ShieldAlert size={17} /> Админ-панель
             </button>
           )}
@@ -898,7 +916,7 @@ export default function Profile({ user, onUpdate, onLogout }) {
           <div className="profile-content" style={{ maxWidth: 680, marginLeft: 'auto', marginRight: 'auto' }}>
             <Feed user={user} onOpenChat={(targetUser) => {
               setChatTarget(targetUser);
-              setTab('messages');
+              switchTab('messages');
             }} />
           </div>
         )}
@@ -907,7 +925,7 @@ export default function Profile({ user, onUpdate, onLogout }) {
           <div className="profile-content">
             <Friends user={user} onOpenChat={(targetUser) => {
               setChatTarget(targetUser);
-              setTab('messages');
+              switchTab('messages');
             }} />
           </div>
         )}
