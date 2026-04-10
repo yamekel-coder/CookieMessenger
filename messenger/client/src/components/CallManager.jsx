@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useWebSocket, wsSend, wsReadyState } from '../hooks/useWebSocket';
+import { useWebSocket, wsSend } from '../hooks/useWebSocket';
 import {
   Phone, PhoneOff, Video, VideoOff,
   Mic, MicOff, Monitor, MonitorOff,
@@ -64,13 +64,12 @@ export default function CallManager({ currentUser }) {
   const callStateRef = useRef('idle');
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
-  const remoteStreamRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const durationTimer = useRef(null);
   const incomingDataRef = useRef(null);
-  const iceBufferRef = useRef([]);
-  const reconnectAttemptsRef = useRef(0);
+  const pendingIceRef = useRef([]);
+  const targetIdRef = useRef(null);
   const screenStreamRef = useRef(null);
   const ringtone = useRingtone();
 
@@ -101,8 +100,8 @@ export default function CallManager({ currentUser }) {
       window.remoteAudioEl.srcObject = null;
     }
 
-    iceBufferRef.current = [];
-    reconnectAttemptsRef.current = 0;
+    pendingIceRef.current = [];
+    targetIdRef.current = null;
 
     setCallStateSync('idle');
     setCallDuration(0);
@@ -122,66 +121,57 @@ export default function CallManager({ currentUser }) {
         noiseSuppression: true,
         autoGainControl: true,
       },
-      video: type === 'video' ? { width: 1280, height: 720, facingMode: 'user' } : false,
+      video: type === 'video' ? { width: 640, height: 480, facingMode: 'user' } : false,
     };
     return navigator.mediaDevices.getUserMedia(constraints);
   }, []);
 
-  const addTracksToPC = useCallback((pc, stream) => {
-    stream.getTracks().forEach(track => {
-      pc.addTrack(track, stream);
-    });
-  }, []);
-
-  const createPeerConnection = useCallback((targetId, onRemoteTrack) => {
+  const createPeerConnection = useCallback((targetId) => {
     if (pcRef.current) {
       pcRef.current.close();
     }
-    iceBufferRef.current = [];
+    pendingIceRef.current = [];
+    targetIdRef.current = targetId;
 
     const conn = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
-      iceCandidatePoolSize: 10,
     });
 
     conn.onicecandidate = (e) => {
-      if (e.candidate) {
-        wsSend('call_ice', targetId, { candidate: e.candidate });
+      if (e.candidate && targetIdRef.current) {
+        wsSend('call_ice', targetIdRef.current, { candidate: e.candidate });
       }
     };
 
     conn.oniceconnectionstatechange = () => {
       const state = conn.iceConnectionState;
-      console.log('[Call] ICE state:', state);
       setConnectionState(state);
 
       if (state === 'connected' || state === 'completed') {
-        console.log('[Call] Connected!');
-        reconnectAttemptsRef.current = 0;
+        console.log('[Call] WebRTC Connected!');
       } else if (state === 'disconnected') {
-        console.log('[Call] Disconnected, attempting reconnect...');
-        if (reconnectAttemptsRef.current < 3) {
-          reconnectAttemptsRef.current++;
-          setTimeout(() => {
-            if (conn.restartIce) conn.restartIce();
-          }, 1000);
-        }
+        console.log('[Call] Disconnected');
       } else if (state === 'failed') {
-        console.log('[Call] Connection failed!');
-        if (reconnectAttemptsRef.current < 3) {
-          reconnectAttemptsRef.current++;
-          if (conn.restartIce) conn.restartIce();
-        } else {
-          setCallError('Соединение потеряно');
-          cleanup();
-        }
+        console.log('[Call] Connection failed');
+        setCallError('Соединение потеряно');
+        cleanup();
       }
     };
 
     conn.ontrack = (e) => {
-      console.log('[Call] ontrack:', e.track.kind, 'stream:', !!e.streams[0]);
-      if (onRemoteTrack && e.streams[0]) {
-        onRemoteTrack(e.streams[0]);
+      console.log('[Call] ontrack:', e.track.kind);
+      if (e.track.kind === 'audio' && e.streams[0]) {
+        if (!window.remoteAudioEl) {
+          const audio = document.createElement('audio');
+          audio.autoplay = true;
+          audio.style.display = 'none';
+          document.body.appendChild(audio);
+          window.remoteAudioEl = audio;
+        }
+        window.remoteAudioEl.srcObject = e.streams[0];
+        window.remoteAudioEl.play().catch(() => {});
+      } else if (e.track.kind === 'video' && e.streams[0] && remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = e.streams[0];
       }
     };
 
@@ -189,49 +179,25 @@ export default function CallManager({ currentUser }) {
     return conn;
   }, [cleanup]);
 
-  const handleRemoteTrack = useCallback((stream) => {
-    console.log('[Call] handleRemoteTrack called, stream has tracks:', stream.getTracks().map(t => t.kind));
-    remoteStreamRef.current = stream;
+  const addLocalTracks = useCallback((pc, stream) => {
+    if (!stream) return;
+    localStreamRef.current = stream;
     
-    if (!window.remoteAudioEl) {
-      const audio = document.createElement('audio');
-      audio.autoplay = true;
-      audio.controls = false;
-      audio.style.display = 'none';
-      document.body.appendChild(audio);
-      window.remoteAudioEl = audio;
-      console.log('[Call] Created remote audio element');
-    }
-    window.remoteAudioEl.srcObject = stream;
-    console.log('[Call] Set srcObject, attempting play...');
-    
-    const playPromise = window.remoteAudioEl.play();
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        console.log('[Call] Audio playing!');
-      }).catch(e => {
-        console.log('[Call] Audio autoplay blocked:', e.message);
-        // User interaction required
-        const resume = () => {
-          console.log('[Call] User clicked, attempting play again');
-          window.remoteAudioEl?.play().catch(() => {});
-          document.removeEventListener('click', resume);
-        };
-        document.addEventListener('click', resume, { once: true });
-      });
-    }
+    stream.getTracks().forEach(track => {
+      pc.addTrack(track, stream);
+    });
 
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = stream;
+    if (stream.getVideoTracks().length > 0 && localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
     }
   }, []);
 
   const startCall = useCallback(async (targetUser, type = 'audio') => {
-    console.log('[Call] Starting call to:', targetUser.id, 'type:', type);
+    console.log('[Call] startCall to:', targetUser.id);
     
     if (callStateRef.current !== 'idle') {
       cleanup();
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 200));
     }
 
     setCallStateSync('calling');
@@ -240,18 +206,12 @@ export default function CallManager({ currentUser }) {
     setCallError(null);
 
     try {
-      console.log('[Call] Getting media...');
       const stream = await getMedia(type);
-      localStreamRef.current = stream;
-      console.log('[Call] Media stream created, tracks:', stream.getTracks().length);
-
-      const pc = createPeerConnection(targetUser.id, handleRemoteTrack);
-      addTracksToPC(pc, stream);
-      console.log('[Call] Tracks added to PC');
+      const pc = createPeerConnection(targetUser.id);
+      addLocalTracks(pc, stream);
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      console.log('[Call] Offer created');
 
       wsSend('call_offer', targetUser.id, {
         offer,
@@ -260,65 +220,50 @@ export default function CallManager({ currentUser }) {
         callerAvatar: currentUser.avatar,
         callerAccent: currentUser.accent_color,
       });
-      console.log('[Call] Offer sent via WS');
-
+      console.log('[Call] Offer sent');
     } catch (err) {
-      console.error('[Call] Start error:', err);
-      setCallError(err.message || 'Ошибка звонка');
+      console.error('[Call] startCall error:', err);
+      setCallError(err.message);
       cleanup();
     }
-  }, [cleanup, getMedia, createPeerConnection, addTracksToPC, handleRemoteTrack, currentUser]);
+  }, [cleanup, getMedia, createPeerConnection, addLocalTracks, currentUser]);
 
   const answerCall = useCallback(async () => {
     const incoming = incomingDataRef.current;
     if (!incoming) {
-      console.log('[Call] answerCall called but no incoming data!');
+      console.log('[Call] No incoming data!');
       return;
     }
-    console.log('[Call] Answering call from:', incoming.from);
+    console.log('[Call] answerCall from:', incoming.from);
 
     ringtone.stop();
     setCallStateSync('active');
 
     try {
-      const type = incoming.type || 'audio';
-      console.log('[Call] Getting media for answer...');
-      const stream = await getMedia(type);
-      localStreamRef.current = stream;
-      console.log('[Call] Media stream created');
-
-      const pc = createPeerConnection(incoming.from, handleRemoteTrack);
-      addTracksToPC(pc, stream);
-      console.log('[Call] Tracks added to PC');
+      const stream = await getMedia(incoming.type || 'audio');
+      const pc = createPeerConnection(incoming.from);
+      addLocalTracks(pc, stream);
 
       await pc.setRemoteDescription(new RTCSessionDescription(incoming.offer));
-      console.log('[Call] Remote description set');
-
-      for (const c of iceBufferRef.current) {
+      
+      for (const c of pendingIceRef.current) {
         try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
       }
-      iceBufferRef.current = [];
+      pendingIceRef.current = [];
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      console.log('[Call] Answer created');
 
       wsSend('call_answer', incoming.from, { answer });
       console.log('[Call] Answer sent');
-      
+
       durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000);
-
-      setTimeout(() => {
-        console.log('[Call] Attempting to play remote audio');
-        window.remoteAudioEl?.play().catch(e => console.log('[Call] Audio play error:', e));
-      }, 500);
-
     } catch (err) {
-      console.error('[Call] Answer error:', err);
-      setCallError(err.message || 'Ошибка при ответе');
+      console.error('[Call] answerCall error:', err);
+      setCallError(err.message);
       cleanup();
     }
-  }, [ringtone, getMedia, createPeerConnection, addTracksToPC, handleRemoteTrack, cleanup]);
+  }, [ringtone, getMedia, createPeerConnection, addLocalTracks, cleanup]);
 
   const rejectCall = useCallback(() => {
     const incoming = incomingDataRef.current;
@@ -351,13 +296,13 @@ export default function CallManager({ currentUser }) {
   }, []);
 
   const toggleScreen = useCallback(async () => {
-    if (!pcRef.current) return;
+    if (!pcRef.current || !localStreamRef.current) return;
 
     if (screenOn) {
       screenStreamRef.current?.getTracks().forEach(t => t.stop());
       screenStreamRef.current = null;
 
-      const camTrack = localStreamRef.current?.getVideoTracks()[0];
+      const camTrack = localStreamRef.current.getVideoTracks()[0];
       if (camTrack) {
         const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
         if (sender) await sender.replaceTrack(camTrack);
@@ -373,59 +318,46 @@ export default function CallManager({ currentUser }) {
         const screenTrack = screen.getVideoTracks()[0];
 
         const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
-        if (sender) {
-          await sender.replaceTrack(screenTrack);
-        }
+        if (sender) await sender.replaceTrack(screenTrack);
+
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screen;
         }
 
-        screenTrack.onended = () => {
-          if (screenOn) toggleScreen();
-        };
+        screenTrack.onended = () => { if (screenOn) toggleScreen(); };
         setScreenOn(true);
       } catch (err) {
-        console.error('[Screen] Error:', err);
+        console.error('[Screen] error:', err);
       }
     }
   }, [screenOn]);
 
   useWebSocket({
     call_offer: (data) => {
-      console.log('[Call] Incoming call_offer:', data);
+      console.log('[Call] call_offer received from:', data.from);
+      
       if (callStateRef.current !== 'idle') {
-        console.log('[Call] Busy, rejecting');
         wsSend('call_busy', data.from, {});
         return;
       }
 
       incomingDataRef.current = data;
       setCallType(data.type || 'audio');
-
-      const ru = {
+      setRemoteUser({
         id: data.from,
         display_name: data.callerName,
         avatar: data.callerAvatar,
         accent_color: data.callerAccent,
-      };
-      setRemoteUser(ru);
+      });
       setCallStateSync('incoming');
       ringtone.ring();
-      console.log('[Call] Showing incoming call UI');
-      
-      // Auto-answer after short delay for testing
-      setTimeout(() => {
-        if (callStateRef.current === 'incoming') {
-          console.log('[Call] Auto-answering...');
-          answerCall();
-        }
-      }, 1500);
     },
 
     call_answer: async (data) => {
-      console.log('[Call] Received call_answer:', data);
+      console.log('[Call] call_answer received');
+      
       if (!pcRef.current) {
-        console.log('[Call] No peer connection!');
+        console.log('[Call] No PC for answer!');
         return;
       }
 
@@ -433,20 +365,15 @@ export default function CallManager({ currentUser }) {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
         console.log('[Call] Remote description set');
 
-        for (const c of iceBufferRef.current) {
+        for (const c of pendingIceRef.current) {
           try { await pcRef.current.addIceCandidate(new RTCIceCandidate(c)); } catch {}
         }
-        iceBufferRef.current = [];
+        pendingIceRef.current = [];
 
         setCallStateSync('active');
         durationTimer.current = setInterval(() => setCallDuration(d => d + 1), 1000);
-
-        setTimeout(() => {
-          console.log('[Call] Attempting to play remote audio');
-          window.remoteAudioEl?.play().catch(e => console.log('[Call] Audio play error:', e));
-        }, 500);
       } catch (err) {
-        console.error('[Call] Answer set error:', err);
+        console.error('[Call] setRemoteDescription error:', err);
         setCallError('Ошибка соединения');
         cleanup();
       }
@@ -454,13 +381,16 @@ export default function CallManager({ currentUser }) {
 
     call_ice: async (data) => {
       if (!data.candidate) return;
-      try {
-        if (pcRef.current?.remoteDescription) {
+      
+      if (pcRef.current && pcRef.current.remoteDescription) {
+        try {
           await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } else {
-          iceBufferRef.current.push(data.candidate);
+        } catch (err) {
+          console.log('[Call] ICE error:', err.message);
         }
-      } catch {}
+      } else {
+        pendingIceRef.current.push(data.candidate);
+      }
     },
 
     call_reject: () => {
@@ -484,12 +414,6 @@ export default function CallManager({ currentUser }) {
   useEffect(() => {
     window.__startCall = (...args) => startCallRef.current(...args);
     return () => { delete window.__startCall; };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      cleanup();
-    };
   }, []);
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -566,8 +490,8 @@ export default function CallManager({ currentUser }) {
                 <span className="call-conn-state">{
                   connectionState === 'connecting' ? '🔄 Подключение...' :
                   connectionState === 'checking' ? '🔄 Проверка...' :
-                  connectionState === 'disconnected' ? '⚠️ Переподключение...' :
-                  connectionState === 'failed' ? '❌ Ошибка связи' : ''
+                  connectionState === 'disconnected' ? '⚠️ Разрыв...' :
+                  connectionState === 'failed' ? '❌ Ошибка' : connectionState
                 }</span>
               )}
             </div>
