@@ -10,14 +10,11 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun.services.mozilla.com' },
+  { urls: 'stun:stun4.l.google.com:19302' },
+  { urls: 'stun:stun.services.mozilla.com:3478' },
   { urls: 'stun:global.stun.twilio.com:3478' },
   { urls: 'stun:openrelay.metered.ca:3478' },
-  {
-    urls: 'turn:213.152.43.207:3478',
-    username: 'webrtc',
-    credential: 'password123',
-  },
+  { urls: 'stun:stunserver.stunprotocol.org:3478' },
   {
     urls: 'turn:a.relay.metered.ca:80',
     username: 'openrelayproject',
@@ -25,6 +22,16 @@ const ICE_SERVERS = [
   },
   {
     urls: 'turn:a.relay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turns:a.relay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:global.relay.twilio.com:3478',
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
@@ -94,6 +101,8 @@ export default function CallManager({ currentUser }) {
   const targetIdRef = useRef(null);
   const screenStreamRef = useRef(null);
   const ringtone = useRingtone();
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef(null);
 
   const setCallStateSync = (s) => {
     callStateRef.current = s;
@@ -103,6 +112,8 @@ export default function CallManager({ currentUser }) {
   const cleanup = useCallback(() => {
     clearInterval(durationTimer.current);
     durationTimer.current = null;
+    clearTimeout(retryTimeoutRef.current);
+    retryTimeoutRef.current = null;
     ringtone.stop();
 
     if (localStreamRef.current) {
@@ -124,6 +135,7 @@ export default function CallManager({ currentUser }) {
 
     pendingIceRef.current = [];
     targetIdRef.current = null;
+    retryCountRef.current = 0;
 
     setCallStateSync('idle');
     setCallDuration(0);
@@ -181,12 +193,25 @@ export default function CallManager({ currentUser }) {
         console.log('[Call] Checking connectivity...');
       } else if (state === 'connected' || state === 'completed') {
         console.log('[Call] WebRTC Connected!');
+        retryCountRef.current = 0;
       } else if (state === 'disconnected') {
-        console.log('[Call] Disconnected - may reconnect');
+        console.log('[Call] Disconnected - retrying ICE...');
+        conn.restartIce?.();
       } else if (state === 'failed') {
-        console.log('[Call] Connection failed');
-        setCallError('Не удалось установить соединение. Проверьте интернет.');
-        cleanup();
+        console.log('[Call] Connection failed, retrying...', retryCountRef.current);
+        
+        if (retryCountRef.current < 3) {
+          retryCountRef.current++;
+          const delay = Math.min(1500 * Math.pow(2, retryCountRef.current - 1), 5000);
+          retryTimeoutRef.current = setTimeout(async () => {
+            console.log('[Call] Retrying connection (attempt', retryCountRef.current + ')...');
+            conn.restartIce?.();
+          }, delay);
+        } else {
+          console.log('[Call] Max retries reached');
+          setCallError('Не удалось установить соединение. Проверьте интернет.');
+          cleanup();
+        }
       } else if (state === 'closed') {
         console.log('[Call] Connection closed');
       }
