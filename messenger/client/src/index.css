@@ -5766,7 +5766,7 @@ body::after {
 .ch-post-delete { background: none; border: none; color: #333; cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; transition: color 0.15s; }
 .ch-post-delete:hover { color: #ff6b6b; }
 .ch-post-content { font-size: 0.9rem; color: #ccc; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-wrap; }
-.ch-post-media { width: 100%; border-radius: 8px; max-height: none; object-fit: contain; margin-bottom: 0.75rem; display: block; cursor: pointer; }
+.ch-post-media { max-width: 320px; max-height: 240px; width: auto; height: auto; border-radius: 8px; object-fit: contain; margin-bottom: 0.75rem; display: block; cursor: zoom-in; }
 .ch-post-footer { display: flex; align-items: center; justify-content: space-between; }
 .ch-react-btn { display: flex; align-items: center; gap: 0.35rem; background: none; border: 1px solid #1a1a1a; border-radius: 20px; color: #555; font-size: 0.78rem; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
 .ch-react-btn:hover { border-color: #333; color: #888; }
