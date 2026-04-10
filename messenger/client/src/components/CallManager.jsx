@@ -8,9 +8,36 @@ import {
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun.services.mozilla.com' },
   { urls: 'stun:global.stun.twilio.com:3478' },
-  { urls: 'turn:a.relay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:a.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'stun:openrelay.metered.ca:3478' },
+  {
+    urls: 'turn:a.relay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:a.relay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:b.relay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:b.relay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
 function useRingtone() {
@@ -135,41 +162,71 @@ export default function CallManager({ currentUser }) {
 
     const conn = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
+      iceTransportPolicy: 'all',
     });
 
     conn.onicecandidate = (e) => {
       if (e.candidate && targetIdRef.current) {
-        wsSend('call_ice', targetIdRef.current, { candidate: e.candidate });
+        const cand = e.candidate;
+        console.log('[Call] ICE candidate:', cand.type, cand.protocol, cand.address || 'unknown');
+        wsSend('call_ice', targetIdRef.current, { candidate: cand });
       }
+    };
+
+    conn.onicegatheringstatechange = () => {
+      console.log('[Call] ICE gathering:', conn.iceGatheringState);
     };
 
     conn.oniceconnectionstatechange = () => {
       const state = conn.iceConnectionState;
+      console.log('[Call] ICE state change:', state);
       setConnectionState(state);
 
-      if (state === 'connected' || state === 'completed') {
+      if (state === 'checking') {
+        console.log('[Call] Checking connectivity...');
+      } else if (state === 'connected' || state === 'completed') {
         console.log('[Call] WebRTC Connected!');
       } else if (state === 'disconnected') {
-        console.log('[Call] Disconnected');
+        console.log('[Call] Disconnected - may reconnect');
       } else if (state === 'failed') {
         console.log('[Call] Connection failed');
-        setCallError('Соединение потеряно');
+        setCallError('Не удалось установить соединение. Проверьте интернет.');
         cleanup();
+      } else if (state === 'closed') {
+        console.log('[Call] Connection closed');
       }
     };
 
     conn.ontrack = (e) => {
-      console.log('[Call] ontrack:', e.track.kind);
+      console.log('[Call] ontrack:', e.track.kind, 'streams:', e.streams.length);
       if (e.track.kind === 'audio' && e.streams[0]) {
+        console.log('[Call] Got audio stream!');
         if (!window.remoteAudioEl) {
           const audio = document.createElement('audio');
           audio.autoplay = true;
+          audio.playsInline = true;
+          audio.controls = false;
           audio.style.display = 'none';
+          audio.style.position = 'absolute';
+          audio.style.opacity = '0';
           document.body.appendChild(audio);
           window.remoteAudioEl = audio;
         }
         window.remoteAudioEl.srcObject = e.streams[0];
-        window.remoteAudioEl.play().catch(() => {});
+        window.remoteAudioEl.volume = 1;
+        
+        // Force play
+        const playAudio = () => {
+          window.remoteAudioEl.play().then(() => {
+            console.log('[Call] Audio playing!');
+          }).catch(err => {
+            console.log('[Call] Play failed:', err.message);
+          });
+        };
+        playAudio();
+        
+        // Listen for click to start audio
+        document.addEventListener('click', playAudio, { once: true });
       } else if (e.track.kind === 'video' && e.streams[0] && remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = e.streams[0];
       }
