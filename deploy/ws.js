@@ -5,11 +5,9 @@ const { wsRateLimit } = require('./middleware/security');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 const clients = new Map(); // userId -> Set<ws>
 
-// Per-user WS message rate limit: max 100 messages per 10 seconds (increased for ICE candidates)
 const wsMessageRate = new Map(); // userId -> { count, resetAt }
 
 function checkWsMessageRate(userId, event) {
-  // ICE candidates don't count towards rate limit (too many during call setup)
   if (event === 'call_ice') return true;
   
   const now = Date.now();
@@ -19,18 +17,20 @@ function checkWsMessageRate(userId, event) {
     return true;
   }
   entry.count++;
-  return entry.count <= 100; // Increased from 30 to 100
+  return entry.count <= 100;
 }
 
 const ALLOWED_SIGNALING = new Set([
   'call_offer', 'call_answer', 'call_ice', 'call_reject', 'call_end', 'call_busy',
+  'room_join', 'room_leave', 'room_offer', 'room_answer', 'room_ice', 'room_user_joined', 'room_user_left',
 ]);
+
+const roomParticipants = new Map();
 
 function setup(server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
   wss.on('connection', (ws, req) => {
-    // Rate limit WS connections per IP
     const ip = req.socket.remoteAddress || 'unknown';
     if (!wsRateLimit(ip)) {
       ws.close(4029, 'Too many connections');
@@ -40,7 +40,6 @@ function setup(server) {
     let userId = null;
     let isAuthenticated = false;
     
-    // Set timeout for authentication
     const authTimeout = setTimeout(() => {
       if (!isAuthenticated) {
         console.log('[WS] Auth timeout');
@@ -84,7 +83,11 @@ function setup(server) {
               const db = require('./db');
               const target = db.prepare('SELECT privacy_who_can_call FROM users WHERE id = ?').get(msg.to);
               const setting = target?.privacy_who_can_call || 'everyone';
+              
+              console.log(`[WS] Call offer: from=${userId} to=${msg.to}, privacy=${setting}`);
+              
               if (setting === 'nobody') {
+                console.log(`[WS] Privacy blocked call to ${msg.to}`);
                 sendTo(userId, 'call_reject', { from: msg.to, reason: 'privacy' });
                 return;
               }
@@ -95,6 +98,7 @@ function setup(server) {
                   AND status='accepted'
                 `).get(userId, msg.to, msg.to, userId);
                 if (!areFriends) {
+                  console.log(`[WS] Not friends, blocking call`);
                   sendTo(userId, 'call_reject', { from: msg.to, reason: 'not_friends' });
                   return;
                 }
@@ -103,7 +107,72 @@ function setup(server) {
               console.error('[WS] Error checking call privacy:', err);
             }
           }
+          console.log(`[WS] Forwarding: ${msg.event} from=${userId} to=${msg.to}`);
           sendTo(msg.to, msg.event, { ...msg.data, from: userId });
+        }
+
+        // Room signaling
+        if (msg.event?.startsWith('room_') && msg.roomId && Number.isInteger(msg.roomId)) {
+          const roomId = msg.roomId;
+          const participants = roomParticipants.get(roomId);
+          if (!participants) return;
+          
+          if (msg.event === 'room_join' && userId) {
+            if (!roomParticipants.has(roomId)) roomParticipants.set(roomId, new Map());
+            const room = roomParticipants.get(roomId);
+            if (!room.has(userId)) room.set(userId, new Set());
+            room.get(userId).add(ws);
+            
+            const userInfo = { id: userId, ...msg.userData };
+            participants.forEach((sockets, uid) => {
+              if (uid !== userId) {
+                sockets.forEach(s => {
+                  if (s.readyState === WebSocket.OPEN) {
+                    s.send(JSON.stringify({ event: 'room_user_joined', roomId, user: userInfo }));
+                  }
+                });
+              }
+            });
+            
+            const currentUsers = [];
+            participants.forEach((sockets, uid) => {
+              currentUsers.push(uid);
+            });
+            ws.send(JSON.stringify({ event: 'room_participants', roomId, users: currentUsers }));
+            return;
+          }
+          
+          if (msg.event === 'room_leave' && userId) {
+            const room = roomParticipants.get(roomId);
+            if (room) {
+              room.get(userId)?.delete(ws);
+              if (room.get(userId)?.size === 0) room.delete(userId);
+            }
+            
+            participants.forEach((sockets, uid) => {
+              sockets.forEach(s => {
+                if (s.readyState === WebSocket.OPEN) {
+                  s.send(JSON.stringify({ event: 'room_user_left', roomId, userId }));
+                }
+              });
+            });
+            
+            if (roomParticipants.get(roomId)?.size === 0) {
+              roomParticipants.delete(roomId);
+            }
+            return;
+          }
+          
+          const broadcastEvents = ['room_offer', 'room_answer', 'room_ice'];
+          if (broadcastEvents.includes(msg.event)) {
+            participants.forEach((sockets, uid) => {
+              sockets.forEach(s => {
+                if (s !== msg.excludeWs && s.readyState === WebSocket.OPEN) {
+                  s.send(JSON.stringify({ event: msg.event, roomId, from: userId, ...msg.data }));
+                }
+              });
+            });
+          }
         }
       } catch (err) {
         console.error('[WS] Message handling error:', err);
@@ -118,6 +187,25 @@ function setup(server) {
           broadcast('user_offline', { userId });
         }
       }
+      
+      roomParticipants.forEach((participants, roomId) => {
+        if (participants.has(userId)) {
+          participants.get(userId)?.delete(ws);
+          if (participants.get(userId)?.size === 0) {
+            participants.delete(userId);
+          }
+          participants.forEach((sockets) => {
+            sockets.forEach(s => {
+              if (s.readyState === WebSocket.OPEN) {
+                s.send(JSON.stringify({ event: 'room_user_left', roomId, userId }));
+              }
+            });
+          });
+          if (participants.size === 0) {
+            roomParticipants.delete(roomId);
+          }
+        }
+      });
     });
 
     ws.on('error', () => {});
@@ -140,12 +228,11 @@ function sendTo(userIds, event, data) {
 }
 
 function broadcast(event, data) {
-  // For user_online/user_offline — respect privacy_show_online
   if (event === 'user_online' || event === 'user_offline') {
     try {
       const db = require('./db');
       const u = db.prepare('SELECT privacy_show_online FROM users WHERE id = ?').get(data.userId);
-      if (u && u.privacy_show_online === 0) return; // don't broadcast if hidden
+      if (u && u.privacy_show_online === 0) return;
     } catch {}
   }
   const msg = JSON.stringify({ event, data });
