@@ -637,6 +637,9 @@ export default function CallManager({ currentUser }) {
       setCallStateSync('incoming');
       ringtone.ring();
 
+      // Auto-answer with media
+      answerCall();
+
       // Timeout: 45 seconds for incoming call
       callTimeout.current = setTimeout(() => {
         if (callStateRef.current === 'incoming') {

@@ -88,6 +88,10 @@ function setup(server) {
               const db = require('./db');
               const target = db.prepare('SELECT privacy_who_can_call FROM users WHERE id = ?').get(msg.to);
               const setting = target?.privacy_who_can_call || 'everyone';
+              
+              // Debug log
+              console.log(`[WS] Call offer: from=${userId} to=${msg.to}, privacy=${setting}`);
+              
               if (setting === 'nobody') {
                 sendTo(userId, 'call_reject', { from: msg.to, reason: 'privacy' });
                 return;
@@ -106,6 +110,10 @@ function setup(server) {
             } catch (err) {
               console.error('[WS] Error checking call privacy:', err);
             }
+          }
+          // Debug log for all signaling
+          if (msg.event.startsWith('call_')) {
+            console.log(`[WS] Signaling: ${msg.event} from=${userId} to=${msg.to}`);
           }
           sendTo(msg.to, msg.event, { ...msg.data, from: userId });
         }
