@@ -4,6 +4,9 @@ import { wsSend, useWebSocket } from './useWebSocket';
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
   { urls: 'stun:global.stun.twilio.com:3478' },
   {
     urls: 'turn:a.relay.metered.ca:80',
@@ -12,6 +15,11 @@ const ICE_SERVERS = [
   },
   {
     urls: 'turn:a.relay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:global.relay.twilio.com:3478',
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
@@ -34,6 +42,9 @@ export function useVoiceChat(roomId, currentUser) {
   
   useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
 
+  const retryAttemptsRef = useRef(new Map());
+  const retryTimeoutsRef = useRef(new Map());
+
   const createPC = useCallback((targetUserId) => {
     if (pcsRef.current.has(targetUserId)) {
       pcsRef.current.get(targetUserId).close();
@@ -48,8 +59,27 @@ export function useVoiceChat(roomId, currentUser) {
     };
 
     conn.oniceconnectionstatechange = () => {
-      if (conn.iceConnectionState === 'failed') {
+      console.log(`[Voice] ICE state for ${targetUserId}: ${conn.iceConnectionState}`);
+      
+      if (conn.iceConnectionState === 'failed' || conn.iceConnectionState === 'disconnected') {
+        console.log(`[Voice] ICE failed/disconnected for ${targetUserId}, restarting ICE...`);
         conn.restartIce?.();
+        
+        const attempts = retryAttemptsRef.current.get(targetUserId) || 0;
+        if (attempts < 3) {
+          retryAttemptsRef.current.set(targetUserId, attempts + 1);
+          const delay = Math.min(1000 * Math.pow(2, attempts), 5000);
+          setTimeout(() => {
+            if (pcsRef.current.has(targetUserId) && conn.iceConnectionState !== 'connected') {
+              console.log(`[Voice] Retrying connection for ${targetUserId} (attempt ${attempts + 1})`);
+              createOfferForUser(targetUserId);
+            }
+          }, delay);
+        }
+      }
+      
+      if (conn.iceConnectionState === 'connected') {
+        retryAttemptsRef.current.set(targetUserId, 0);
       }
     };
 
@@ -183,7 +213,7 @@ export function useVoiceChat(roomId, currentUser) {
       roomId: roomIdRef.current, 
       data: { offer }
     });
-  }, [createPC]);
+  }, []);
 
   useWebSocket({
     room_participants: (data) => {
@@ -222,6 +252,13 @@ export function useVoiceChat(roomId, currentUser) {
         if (audioEl) {
           audioEl.remove();
           remoteAudiosRef.current.delete(data.userId);
+        }
+
+        retryAttemptsRef.current.delete(data.userId);
+        const retryTimeout = retryTimeoutsRef.current.get(data.userId);
+        if (retryTimeout) {
+          clearTimeout(retryTimeout);
+          retryTimeoutsRef.current.delete(data.userId);
         }
       }
     },
