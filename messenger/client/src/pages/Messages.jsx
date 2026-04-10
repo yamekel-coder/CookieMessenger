@@ -266,10 +266,19 @@ export default function Messages({ user, initialChat, onClearInitial }) {
   };
 
   const handleMediaPick = async (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const src = await fileToBase64(file);
-    setMediaPreview({ src, type });
+    const files = Array.from(e.target.files).slice(0, 10);
+    if (!files.length) return;
+    if (files.length === 1) {
+      const src = await fileToBase64(files[0]);
+      setMediaPreview({ src, type });
+    } else {
+      const previews = [];
+      for (const file of files) {
+        const src = await fileToBase64(file);
+        previews.push({ src, type: file.type.startsWith('image/') ? 'image' : 'video' });
+      }
+      setMediaPreview({ multiple: previews });
+    }
     e.target.value = '';
     inputRef.current?.focus();
   };
@@ -318,6 +327,23 @@ export default function Messages({ user, initialChat, onClearInitial }) {
     if ((!text.trim() && !mediaPreview) || sending || !activeUser) return;
     setSending(true);
     try {
+      // Multi-file: send each as separate message
+      if (mediaPreview?.multiple) {
+        for (let i = 0; i < mediaPreview.multiple.length; i++) {
+          const f = mediaPreview.multiple[i];
+          await api(`/api/messages/${activeUser.id}`, {
+            method: 'POST',
+            body: JSON.stringify({
+              content: i === 0 ? (text.trim() || null) : null,
+              media: f.src, media_type: f.type,
+              reply_to_id: i === 0 ? (replyTo?.id || null) : null,
+            }),
+          });
+        }
+        setText(''); setMediaPreview(null); setReplyTo(null); loadConvos();
+        return;
+      }
+
       const body = {
         content: text.trim() || null,
         media: mediaPreview?.src || null,
@@ -326,10 +352,7 @@ export default function Messages({ user, initialChat, onClearInitial }) {
       };
       const res = await api(`/api/messages/${activeUser.id}`, { method: 'POST', body: JSON.stringify(body) });
       if (res.ok) {
-        setText('');
-        setMediaPreview(null);
-        setReplyTo(null);
-        loadConvos();
+        setText(''); setMediaPreview(null); setReplyTo(null); loadConvos();
       } else {
         const error = await res.json();
         alert(`Ошибка отправки: ${error.error || 'Неизвестная ошибка'}`);
@@ -523,15 +546,31 @@ export default function Messages({ user, initialChat, onClearInitial }) {
 
             {/* Media preview bar */}
             {mediaPreview && (
-              <div className="msg-media-preview">
-                {mediaPreview.type === 'image'
-                  ? <img src={mediaPreview.src} alt="preview" />
-                  : <video src={mediaPreview.src} />
+              <div className="msg-media-preview" style={{ flexWrap: 'wrap', gap: '0.4rem' }}>
+                {mediaPreview.multiple
+                  ? mediaPreview.multiple.map((f, i) => (
+                      <div key={i} style={{ position: 'relative' }}>
+                        {f.type === 'image'
+                          ? <img src={f.src} alt="preview" style={{ height: 56, borderRadius: 6, objectFit: 'cover' }} />
+                          : <video src={f.src} style={{ height: 56, borderRadius: 6 }} />
+                        }
+                        <button onClick={() => {
+                          const next = mediaPreview.multiple.filter((_, idx) => idx !== i);
+                          setMediaPreview(next.length === 0 ? null : next.length === 1 ? next[0] : { multiple: next });
+                        }} style={{ position: 'absolute', top: -4, right: -4, background: '#ff6b6b', border: 'none', color: '#fff', borderRadius: '50%', width: 16, height: 16, fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                      </div>
+                    ))
+                  : <>
+                      {mediaPreview.type === 'image'
+                        ? <img src={mediaPreview.src} alt="preview" />
+                        : <video src={mediaPreview.src} />
+                      }
+                      <button className="msg-media-remove" onClick={clearMedia}><X size={14} /></button>
+                      <span className="msg-media-label">
+                        {mediaPreview.type === 'image' ? 'Фото' : 'Видео'}
+                      </span>
+                    </>
                 }
-                <button className="msg-media-remove" onClick={clearMedia}><X size={14} /></button>
-                <span className="msg-media-label">
-                  {mediaPreview.type === 'image' ? 'Фото' : 'Видео'}
-                </span>
               </div>
             )}
 
@@ -551,8 +590,8 @@ export default function Messages({ user, initialChat, onClearInitial }) {
               )}
 
               <div className="msg-input-row">
-                <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => handleMediaPick(e, 'image')} />
-                <input ref={videoRef} type="file" accept="video/*" hidden onChange={e => handleMediaPick(e, 'video')} />
+                <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={e => handleMediaPick(e, 'image')} />
+                <input ref={videoRef} type="file" accept="video/*" multiple hidden onChange={e => handleMediaPick(e, 'video')} />
 
                 <button className="msg-media-btn" onClick={() => fileRef.current.click()} title="Фото">
                   <Image size={17} />

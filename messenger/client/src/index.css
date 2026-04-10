@@ -2838,12 +2838,13 @@ body::after {
 /* ── Message media ── */
 .msg-media-img {
   max-width: 260px;
-  max-height: 300px;
-  width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
   border-radius: 10px;
   display: block;
   cursor: zoom-in;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .msg-media-video {

@@ -5,6 +5,7 @@ import {
   Image, Video, Smile, Flag,
 } from 'lucide-react';
 import EmojiPicker from '../components/EmojiPicker';
+import Lightbox from '../components/Lightbox';
 
 function api(path, opts = {}) {
   return fetch(path, {
@@ -166,10 +167,11 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [tab, setTab] = useState('chat'); // chat | members | settings
+  const [tab, setTab] = useState('chat');
   const [showReport, setShowReport] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const [inviteSearch, setInviteSearch] = useState('');
   const [inviteResults, setInviteResults] = useState([]);
   const bottomRef = useRef();
@@ -207,18 +209,33 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
   const sendMessage = async () => {
     if ((!text.trim() && !mediaPreview) || sending) return;
     setSending(true);
+    if (mediaPreview?.multiple) {
+      for (let i = 0; i < mediaPreview.multiple.length; i++) {
+        const f = mediaPreview.multiple[i];
+        await api(`/api/groups/${group.id}/messages`, { method: 'POST', body: JSON.stringify({ content: i === 0 ? (text.trim() || null) : null, media: f.src, media_type: f.type }) });
+      }
+      setText(''); setMediaPreview(null); setSending(false); return;
+    }
     const body = { content: text.trim() || null, media: mediaPreview?.src || null, media_type: mediaPreview?.type || null };
     const res = await api(`/api/groups/${group.id}/messages`, { method: 'POST', body: JSON.stringify(body) });
     if (res.ok) { setText(''); setMediaPreview(null); }
     setSending(false);
   };
 
-  const handleMediaPick = (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => setMediaPreview({ src: ev.target.result, type });
-    reader.readAsDataURL(file);
+  const handleMediaPick = async (e, type) => {
+    const files = Array.from(e.target.files).slice(0, 10);
+    if (!files.length) return;
+    if (files.length === 1) {
+      const src = await new Promise(r => { const fr = new FileReader(); fr.onload = ev => r(ev.target.result); fr.readAsDataURL(files[0]); });
+      setMediaPreview({ src, type });
+    } else {
+      const previews = [];
+      for (const file of files) {
+        const src = await new Promise(r => { const fr = new FileReader(); fr.onload = ev => r(ev.target.result); fr.readAsDataURL(file); });
+        previews.push({ src, type: file.type.startsWith('image/') ? 'image' : 'video' });
+      }
+      setMediaPreview({ multiple: previews });
+    }
     e.target.value = '';
   };
 
@@ -291,7 +308,7 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
                   <div>
                     {showName && !isMine && <div style={{ fontSize: 11, color: m.accent_color || '#888', marginBottom: 2, marginLeft: 4 }}>{m.display_name || m.username}</div>}
                     <div className={`msg-bubble ${isMine ? 'msg-bubble-mine' : 'msg-bubble-theirs'}`} style={isMine && !m.media ? { background: accent, color: '#000' } : {}}>
-                      {m.media && m.media_type === 'image' && <img src={m.media} alt="img" className="msg-media-img" />}
+                      {m.media && m.media_type === 'image' && <img src={m.media} alt="img" className="msg-media-img" onClick={() => setLightboxSrc(m.media)} />}
                       {m.media && m.media_type === 'video' && <video src={m.media} controls className="msg-media-video" />}
                       {m.content && <span className="msg-bubble-text">{m.content}</span>}
                       <span className="msg-bubble-time" style={isMine && !m.media ? { color: 'rgba(0,0,0,0.45)' } : {}}>{msgTime(m.created_at)}</span>
@@ -304,9 +321,16 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
           </div>
 
           {mediaPreview && (
-            <div className="msg-media-preview">
-              {mediaPreview.type === 'image' ? <img src={mediaPreview.src} alt="preview" /> : <video src={mediaPreview.src} />}
-              <button className="msg-media-remove" onClick={() => setMediaPreview(null)}><X size={14} /></button>
+            <div className="msg-media-preview" style={{ flexWrap: 'wrap', gap: '0.4rem' }}>
+              {mediaPreview.multiple
+                ? mediaPreview.multiple.map((f, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                      {f.type === 'image' ? <img src={f.src} alt="preview" style={{ height: 56, borderRadius: 6, objectFit: 'cover' }} /> : <video src={f.src} style={{ height: 56, borderRadius: 6 }} />}
+                      <button onClick={() => { const next = mediaPreview.multiple.filter((_, idx) => idx !== i); setMediaPreview(next.length === 0 ? null : next.length === 1 ? next[0] : { multiple: next }); }} style={{ position: 'absolute', top: -4, right: -4, background: '#ff6b6b', border: 'none', color: '#fff', borderRadius: '50%', width: 16, height: 16, fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                    </div>
+                  ))
+                : <>{mediaPreview.type === 'image' ? <img src={mediaPreview.src} alt="preview" /> : <video src={mediaPreview.src} />}<button className="msg-media-remove" onClick={() => setMediaPreview(null)}><X size={14} /></button></>
+              }
             </div>
           )}
 
@@ -317,8 +341,8 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
               </div>
             )}
             <div className="msg-input-row">
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => handleMediaPick(e, 'image')} />
-              <input ref={videoRef} type="file" accept="video/*" hidden onChange={e => handleMediaPick(e, 'video')} />
+              <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={e => handleMediaPick(e, 'image')} />
+              <input ref={videoRef} type="file" accept="video/*" multiple hidden onChange={e => handleMediaPick(e, 'video')} />
               <button className="msg-media-btn" onClick={() => fileRef.current.click()}><Image size={17} /></button>
               <button className="msg-media-btn" onClick={() => videoRef.current.click()}><Video size={17} /></button>
               <input className="msg-input" placeholder="Написать сообщение..." value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()} maxLength={2000} />
@@ -384,6 +408,7 @@ function GroupChat({ group: initialGroup, user, onBack, onLeave }) {
       {showReport && (
         <ReportModal targetType="group" targetId={group.id} onClose={() => setShowReport(false)} />
       )}
+      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
     </div>
   );
 }
