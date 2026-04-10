@@ -220,11 +220,29 @@ function ReportModal({ targetType, targetId, onClose }) {
   );
 }
 
+function Lightbox({ src, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}>
+      <img src={src} alt="full" onClick={e => e.stopPropagation()} style={{ maxWidth: '95vw', maxHeight: '95vh', objectFit: 'contain', borderRadius: 8, cursor: 'default' }} />
+      <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: 36, height: 36, fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+    </div>
+  );
+}
+
 function SpoilerImage({ src, spoiler }) {
   const [revealed, setRevealed] = useState(false);
-  if (!spoiler || revealed) {
-    return <img src={src} alt="media" className="ch-post-media" onClick={() => {}} />;
-  }
+  const [lightbox, setLightbox] = useState(false);
+  if (!spoiler || revealed) return (
+    <>
+      <img src={src} alt="media" className="ch-post-media" onClick={() => setLightbox(true)} />
+      {lightbox && <Lightbox src={src} onClose={() => setLightbox(false)} />}
+    </>
+  );
   return (
     <div className="ch-spoiler-wrap" onClick={() => setRevealed(true)} title="Нажмите чтобы показать">
       <img src={src} alt="media" className="ch-post-media ch-spoiler-img" />
@@ -360,18 +378,49 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
   };
 
   const handleMediaPick = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) return;
-    const src = await fileToBase64(file);
-    const type = file.type.startsWith('image/') ? 'image' : 'video';
-    setMediaPreview({ src, type });
+    const files = Array.from(e.target.files).slice(0, 10);
+    if (!files.length) return;
+    const previews = [];
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) continue;
+      const src = await fileToBase64(file);
+      const type = file.type.startsWith('image/') ? 'image' : 'video';
+      previews.push({ src, type });
+    }
+    if (previews.length === 1) {
+      setMediaPreview(previews[0]);
+    } else if (previews.length > 1) {
+      setMediaPreview({ multiple: previews });
+    }
     e.target.value = '';
   };
 
   const handlePost = async () => {
     if ((!text.trim() && !mediaPreview) || sending) return;
     setSending(true);
+
+    // Multi-file: send each as separate post
+    if (mediaPreview?.multiple) {
+      const files = mediaPreview.multiple;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const content = i === 0 ? (text.trim() || null) : null;
+        const res = await api(`/api/channels/${channel.id}/posts`, {
+          method: 'POST',
+          body: JSON.stringify({ content, media: f.src, media_type: f.type, spoiler: spoiler && !!f.src }),
+        });
+        if (res.ok) {
+          const post = await res.json();
+          setPosts(prev => [post, ...prev]);
+        }
+      }
+      setText('');
+      setMediaPreview(null);
+      setSpoiler(false);
+      setSending(false);
+      return;
+    }
+
     const res = await api(`/api/channels/${channel.id}/posts`, {
       method: 'POST',
       body: JSON.stringify({ content: text.trim() || null, media: mediaPreview?.src || null, media_type: mediaPreview?.type || null, spoiler: spoiler && !!mediaPreview }),
@@ -545,12 +594,28 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
         <div style={{ flexShrink: 0, borderTop: '1px solid #1a1a1a', background: '#0d0d0d', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
           {/* Media preview */}
           {mediaPreview && (
-            <div style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #1a1a1a' }}>
-              {mediaPreview.type === 'image' || mediaPreview.type === 'gif'
-                ? <img src={mediaPreview.src} alt="preview" style={{ height: 60, borderRadius: 6, objectFit: 'cover' }} />
-                : <video src={mediaPreview.src} style={{ height: 60, borderRadius: 6 }} />
+            <div style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid #1a1a1a', flexWrap: 'wrap' }}>
+              {mediaPreview.multiple
+                ? mediaPreview.multiple.map((f, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                      {f.type === 'image' || f.type === 'gif'
+                        ? <img src={f.src} alt="preview" style={{ height: 60, borderRadius: 6, objectFit: 'cover' }} />
+                        : <video src={f.src} style={{ height: 60, borderRadius: 6 }} />
+                      }
+                      <button onClick={() => {
+                        const next = mediaPreview.multiple.filter((_, idx) => idx !== i);
+                        setMediaPreview(next.length === 0 ? null : next.length === 1 ? next[0] : { multiple: next });
+                      }} style={{ position: 'absolute', top: -4, right: -4, background: '#ff6b6b', border: 'none', color: '#fff', borderRadius: '50%', width: 16, height: 16, fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+                    </div>
+                  ))
+                : <>
+                    {mediaPreview.type === 'image' || mediaPreview.type === 'gif'
+                      ? <img src={mediaPreview.src} alt="preview" style={{ height: 60, borderRadius: 6, objectFit: 'cover' }} />
+                      : <video src={mediaPreview.src} style={{ height: 60, borderRadius: 6 }} />
+                    }
+                    <button onClick={() => setMediaPreview(null)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
+                  </>
               }
-              <button onClick={() => setMediaPreview(null)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
             </div>
           )}
 
@@ -566,7 +631,7 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1rem' }}>
-            <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={handleMediaPick} />
+            <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={handleMediaPick} />
             <button className="msg-media-btn" onClick={() => fileRef.current.click()} title="Фото/видео">
               <Image size={18} />
             </button>
