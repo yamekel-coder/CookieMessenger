@@ -145,7 +145,7 @@ app.get('/api/gifs', apiLimiter, async (req, res) => {
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 // Serve built frontend if dist exists (production / pterodactyl)
-const distPath = require('path').join(__dirname, '../client/dist');
+const distPath = require('path').join(__dirname, 'client/dist');
 if (require('fs').existsSync(distPath)) {
   app.use(require('express').static(distPath, {
     maxAge: '1y',
