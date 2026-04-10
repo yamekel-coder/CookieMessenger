@@ -14,22 +14,17 @@ const ICE_SERVERS = [
   { urls: 'stun:global.stun.twilio.com:3478' },
   { urls: 'stun:openrelay.metered.ca:3478' },
   {
+    urls: 'turn:213.152.43.207:3478',
+    username: 'webrtc',
+    credential: 'password123',
+  },
+  {
     urls: 'turn:a.relay.metered.ca:80',
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
   {
     urls: 'turn:a.relay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:b.relay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:b.relay.metered.ca:443',
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
