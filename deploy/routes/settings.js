@@ -81,6 +81,24 @@ router.put('/change-email', auth, (req, res) => {
   res.json({ ok: true, email });
 });
 
+// PUT /api/settings/change-username
+router.put('/change-username', auth, (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username))
+    return res.status(400).json({ error: 'Username: 3-20 символов, только буквы, цифры и _' });
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  const valid = bcrypt.compareSync(password, user.password);
+  if (!valid) return res.status(401).json({ error: 'Неверный пароль' });
+
+  const exists = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, req.user.id);
+  if (exists) return res.status(409).json({ error: 'Username уже занят' });
+
+  db.prepare('UPDATE users SET username = ? WHERE id = ?').run(username, req.user.id);
+  res.json({ ok: true, username });
+});
+
 // PUT /api/settings/change-password
 router.put('/change-password', auth, async (req, res) => {
   const { current_password, new_password } = req.body;

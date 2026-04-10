@@ -66,10 +66,11 @@ export default function Settings({ user, onUpdate, onLogout, onOpenAdmin }) {
   const [loading, setLoading] = useState(true);
 
   // expanded panels
-  const [panel, setPanel] = useState(null); // 'email' | 'password' | 'delete'
+  const [panel, setPanel] = useState(null); // 'email' | 'username' | 'password' | 'delete'
 
   // forms
   const [emailForm, setEmailForm] = useState({ email: '', password: '' });
+  const [usernameForm, setUsernameForm] = useState({ username: '', password: '' });
   const [passForm, setPassForm] = useState({ current_password: '', new_password: '', confirm: '' });
   const [deleteForm, setDeleteForm] = useState({ password: '' });
 
@@ -132,6 +133,24 @@ export default function Settings({ user, onUpdate, onLogout, onOpenAdmin }) {
       setEmailForm({ email: '', password: '' });
       setPanel(null);
       flash('ok', 'Email успешно изменён');
+    } finally { setSaving(false); }
+  };
+
+  const handleUsernameChange = async e => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch('/api/settings/change-username', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify(usernameForm),
+      });
+      const data = await res.json();
+      if (!res.ok) return flash('err', data.error);
+      onUpdate({ ...user, username: data.username });
+      setUsernameForm({ username: '', password: '' });
+      setPanel(null);
+      flash('ok', 'Username успешно изменён');
     } finally { setSaving(false); }
   };
 
@@ -291,6 +310,39 @@ export default function Settings({ user, onUpdate, onLogout, onOpenAdmin }) {
 
       {/* Account */}
       <Section title="Аккаунт">
+        <SettingRow
+          icon={<AtSign size={17} />}
+          label="Изменить username"
+          desc={`@${user.username}`}
+          right={<ChevronRight size={16} className="settings-chevron" />}
+          onClick={() => setPanel(panel === 'username' ? null : 'username')}
+        />
+        {panel === 'username' && (
+          <form className="settings-inline-form" onSubmit={handleUsernameChange}>
+            <div className="sif-field">
+              <label>Новый username</label>
+              <input type="text" value={usernameForm.username} placeholder="username"
+                pattern="[a-zA-Z0-9_]{3,20}"
+                title="3-20 символов, только буквы, цифры и _"
+                onChange={e => setUsernameForm(f => ({ ...f, username: e.target.value }))} required />
+            </div>
+            <div className="sif-field">
+              <label>Текущий пароль</label>
+              <div className="sif-pw">
+                <input type={pw('up')} value={usernameForm.password} placeholder="Подтвердите паролем"
+                  onChange={e => setUsernameForm(f => ({ ...f, password: e.target.value }))} required />
+                <button type="button" onClick={() => togglePw('up')}>{showPw.up ? <EyeOff size={15}/> : <Eye size={15}/>}</button>
+              </div>
+            </div>
+            <div className="sif-actions">
+              <button type="button" className="sif-cancel" onClick={() => setPanel(null)}>Отмена</button>
+              <button type="submit" className="sif-submit" disabled={saving}>Сохранить</button>
+            </div>
+          </form>
+        )}
+
+        <div className="settings-divider" />
+
         <SettingRow
           icon={<Mail size={17} />}
           label="Изменить email"
