@@ -369,6 +369,11 @@ db.exec(`
   )
 `);
 
+// ── group_messages migrations ─────────────────────────────────────────────────
+const gmCols = db.prepare("PRAGMA table_info(group_messages)").all().map(c => c.name);
+if (!gmCols.includes('media_type')) db.exec("ALTER TABLE group_messages ADD COLUMN media_type TEXT");
+if (!gmCols.includes('media')) db.exec("ALTER TABLE group_messages ADD COLUMN media TEXT");
+
 // ── Stories ───────────────────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS stories (
