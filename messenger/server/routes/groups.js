@@ -238,27 +238,31 @@ router.get('/:id/messages', auth, (req, res) => {
 
 // ── POST /api/groups/:id/messages ─────────────────────────────────────────────
 router.post('/:id/messages', auth, messageLimiter, validateLengths({ content: 2000 }), (req, res) => {
-  const group = db.prepare('SELECT * FROM groups WHERE id=?').get(req.params.id);
-  if (!group) return res.status(404).json({ error: 'Группа не найдена' });
-  if (!isMember(group.id, req.user.id)) return res.status(403).json({ error: 'Вы не в группе' });
+  try {
+    const group = db.prepare('SELECT * FROM groups WHERE id=?').get(req.params.id);
+    if (!group) return res.status(404).json({ error: 'Группа не найдена' });
+    if (!isMember(group.id, req.user.id)) return res.status(403).json({ error: 'Вы не в группе' });
 
-  const { content, media, media_type } = req.body;
-  if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустое сообщение' });
+    const { content, media, media_type } = req.body;
+    if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустое сообщение' });
 
-  const result = db.prepare(
-    'INSERT INTO group_messages (group_id, sender_id, content, media, media_type) VALUES (?, ?, ?, ?, ?)'
-  ).run(group.id, req.user.id, content?.trim() || null, media || null, media_type || null);
+    const result = db.prepare(
+      'INSERT INTO group_messages (group_id, sender_id, content, media, media_type) VALUES (?, ?, ?, ?, ?)'
+    ).run(group.id, req.user.id, content?.trim() || null, media || null, media_type || null);
 
-  const msg = db.prepare(`
-    SELECT gm.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
-    FROM group_messages gm JOIN users u ON u.id=gm.sender_id WHERE gm.id=?
-  `).get(result.lastInsertRowid);
+    const msg = db.prepare(`
+      SELECT gm.*, u.username, u.display_name, u.avatar, u.accent_color, u.animated_name
+      FROM group_messages gm JOIN users u ON u.id=gm.sender_id WHERE gm.id=?
+    `).get(result.lastInsertRowid);
 
-  // Send to all group members
-  const members = db.prepare('SELECT user_id FROM group_members WHERE group_id=?').all(group.id);
-  members.forEach(m => ws.sendTo(m.user_id, 'group_message', { groupId: group.id, message: msg }));
+    const members = db.prepare('SELECT user_id FROM group_members WHERE group_id=?').all(group.id);
+    members.forEach(m => ws.sendTo(m.user_id, 'group_message', { groupId: group.id, message: msg }));
 
-  res.json(msg);
+    res.json(msg);
+  } catch (err) {
+    console.error('[groups/messages]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── POST /api/groups/:id/kick/:userId (admin/owner) ───────────────────────────
