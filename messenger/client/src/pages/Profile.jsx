@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   User, Camera, ImagePlus, FileText, Palette, Check,
-  Pencil, X, Save, AtSign, Calendar, Shield, LogOut, Rss, Settings as SettingsIcon, Sticker,
+  Pencil, X, Save, AtSign, Calendar, Shield, LogOut, Rss, Settings as SettingsIcon, Sticker, Sparkle,
   Users, MessageSquare, FileImage, Loader, ShieldAlert, UsersRound,
   Sparkles, Music, Upload, Bookmark,
 } from 'lucide-react';
@@ -24,6 +24,7 @@ import Groups from './Groups';
 import Channels from './Channels';
 import Bookmarks from './Bookmarks';
 import Stickers from './Stickers';
+import Event from './Event';
 
 const ACCENT_COLORS = [
   '#ffffff', '#a8a8a8', '#ff6b6b', '#ffa94d',
@@ -546,6 +547,10 @@ export default function Profile({ user, onUpdate, onLogout }) {
             onClick={() => switchTab('stickers')} style={tab === 'stickers' ? { color: accent } : {}}>
             <Sticker size={17} /> Стикеры
           </button>
+          <button data-nav="event" className={`sidebar-item sidebar-item--event ${tab === 'event' ? 'active' : ''}`}
+            onClick={() => switchTab('event')} style={tab === 'event' ? { color: '#a855f7' } : { color: '#a855f7', opacity: 0.7 }}>
+            <Sparkle size={17} /> Ивент
+          </button>
           <button data-nav="settings" className={`sidebar-item ${tab === 'settings' ? 'active' : ''}`}
             onClick={() => switchTab('settings')} style={tab === 'settings' ? { color: accent } : {}}>
             <SettingsIcon size={17} /> Настройки
@@ -1036,6 +1041,12 @@ export default function Profile({ user, onUpdate, onLogout }) {
         {tab === 'stickers' && (
           <div className="profile-content">
             <Stickers user={user} />
+          </div>
+        )}
+
+        {tab === 'event' && (
+          <div className="profile-content" style={{ padding: 0, maxWidth: '100%' }}>
+            <Event />
           </div>
         )}
 

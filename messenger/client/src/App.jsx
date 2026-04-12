@@ -12,7 +12,7 @@ import ChannelPreview from './pages/ChannelPreview';
 import { wsConnect, wsDisconnect } from './hooks/useWebSocket';
 
 // Tab names that map to URL segments
-const TAB_ROUTES = ['feed', 'friends', 'messages', 'groups', 'channels', 'bookmarks', 'settings', 'admin', 'community', 'stickers'];
+const TAB_ROUTES = ['feed', 'friends', 'messages', 'groups', 'channels', 'bookmarks', 'settings', 'admin', 'community', 'stickers', 'event'];
 
 export default function App() {
   const [user, setUser] = useState(() => {
