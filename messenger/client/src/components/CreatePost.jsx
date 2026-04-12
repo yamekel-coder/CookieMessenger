@@ -255,6 +255,7 @@ export default function CreatePost({ user, onPost }) {
               <div ref={pickerRef} style={{ position: 'absolute', bottom: '110%', left: 0, zIndex: 100 }}>
                 <EmojiPicker
                   accent={accent}
+                  initialTab="stickers"
                   onEmoji={e => { setContent(c => c + e); setShowPicker(false); }}
                   onSticker={handleStickerPick}
                   onGif={() => {}}

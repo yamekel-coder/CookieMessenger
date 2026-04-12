@@ -75,8 +75,8 @@ function addRecent(emoji) {
 }
 
 // ── Main EmojiPicker component ────────────────────────────────────────────────
-export default function EmojiPicker({ onEmoji, onSticker, onGif, onClose, accent = '#fff' }) {
-  const [tab, setTab] = useState('emoji');   // emoji | stickers | gifs
+export default function EmojiPicker({ onEmoji, onSticker, onGif, onClose, accent = '#fff', initialTab = 'emoji' }) {
+  const [tab, setTab] = useState(initialTab);   // emoji | stickers | gifs
   const [emojiCat, setEmojiCat] = useState('smileys');
   const [stickerPack, setStickerPack] = useState(null);
   const [userPacks, setUserPacks] = useState([]);
