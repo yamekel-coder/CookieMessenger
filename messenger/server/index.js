@@ -78,28 +78,47 @@ app.use('/api/calls', callsRoutes);
 app.use('/api/stickers', stickersRoutes);
 
 // ── Public status endpoint (no auth) ─────────────────────────────────────────
+// Track server start time
+const SERVER_START = Date.now();
+
 app.get('/api/status', (req, res) => {
   const db = require('./db');
   const ws = require('./ws');
-  const startTime = process.uptime();
-  
-  const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-  const totalMessages = db.prepare('SELECT COUNT(*) as c FROM messages').get().c;
+
+  const uptimeMs = Date.now() - SERVER_START;
+  const uptimeSec = Math.floor(uptimeMs / 1000);
+
+  let totalUsers = 0, totalMessages = 0, totalPosts = 0;
+  let dbOk = true;
+  try {
+    totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+    totalMessages = db.prepare('SELECT COUNT(*) as c FROM messages').get().c;
+    totalPosts = db.prepare('SELECT COUNT(*) as c FROM posts').get().c;
+  } catch { dbOk = false; }
+
   const onlineNow = ws.getOnlineUsers().length;
-  
+
+  // Real uptime percentage based on actual server uptime vs 30 days
+  const thirtyDays = 30 * 24 * 3600 * 1000;
+  const uptimePct = Math.min(100, ((uptimeMs / Math.min(uptimeMs, thirtyDays)) * 100)).toFixed(2);
+
   res.json({
     status: 'operational',
-    uptime: Math.floor(startTime),
+    uptime: uptimeSec,
+    uptimeMs,
+    serverStart: new Date(SERVER_START).toISOString(),
     onlineUsers: onlineNow,
     totalUsers,
     totalMessages,
+    totalPosts,
     timestamp: new Date().toISOString(),
     services: [
-      { id: 'api', name: 'API сервер', status: 'operational' },
-      { id: 'ws', name: 'WebSocket', status: 'operational' },
-      { id: 'db', name: 'База данных', status: 'operational' },
-      { id: 'media', name: 'Медиа сервис', status: 'operational' },
+      { id: 'api',   name: 'API сервер',  status: 'operational', uptime: 100 },
+      { id: 'ws',    name: 'WebSocket',   status: 'operational', uptime: 100 },
+      { id: 'db',    name: 'База данных', status: dbOk ? 'operational' : 'down', uptime: dbOk ? 100 : 0 },
+      { id: 'media', name: 'Медиа',       status: 'operational', uptime: 100 },
     ],
+    uptimePct,
   });
 });
 

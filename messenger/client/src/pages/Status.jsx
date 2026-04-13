@@ -1,62 +1,59 @@
 import { useState, useEffect } from 'react';
 
-// Generate fake 90-day uptime history (realistic — mostly green, occasional issues)
-function generateHistory(uptime) {
-  const days = 90;
-  const result = [];
-  for (let i = 0; i < days; i++) {
-    const rand = Math.random() * 100;
-    if (rand < uptime - 5) result.push('ok');
-    else if (rand < uptime) result.push('degraded');
-    else result.push('down');
-  }
-  return result;
+function formatUptime(seconds) {
+  if (!seconds) return '—';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (d > 0) return `${d}д ${h}ч ${m}м`;
+  if (h > 0) return `${h}ч ${m}м ${s}с`;
+  if (m > 0) return `${m}м ${s}с`;
+  return `${s}с`;
 }
 
-const SERVICES_CONFIG = [
-  { id: 'api', name: 'API сервер', desc: 'Авторизация и обработка запросов', uptime: 99.8 },
-  { id: 'ws', name: 'WebSocket', desc: 'Сообщения в реальном времени', uptime: 99.5 },
-  { id: 'db', name: 'База данных', desc: 'Хранение данных', uptime: 99.9 },
-  { id: 'media', name: 'Медиа сервис', desc: 'Загрузка фото и видео', uptime: 98.7 },
-];
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
 
-function UptimeBar({ history }) {
+function StatusBadge({ status }) {
+  const map = {
+    operational: { label: 'Работает', color: '#69db7c' },
+    degraded:    { label: 'Деградация', color: '#ffd43b' },
+    down:        { label: 'Недоступен', color: '#ff6b6b' },
+  };
+  const { label, color } = map[status] || map.operational;
   return (
-    <div className="uptime-bar-wrap">
-      <div className="uptime-bar">
-        {history.map((s, i) => (
-          <div
-            key={i}
-            className={`uptime-bar-day uptime-${s}`}
-            title={s === 'ok' ? 'Работает' : s === 'degraded' ? 'Деградация' : 'Недоступен'}
-          />
-        ))}
+    <span className="status-badge" style={{ color, borderColor: color + '44', background: color + '11' }}>
+      <span className="status-badge-dot" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}
+
+function ServiceRow({ service }) {
+  const isOk = service.status === 'operational';
+  return (
+    <div className="status-service-row">
+      <div className="status-service-left">
+        <span className="status-service-name">{service.name}</span>
+        {service.desc && <span className="status-service-desc">{service.desc}</span>}
       </div>
-      <div className="uptime-bar-labels">
-        <span>90 дней назад</span>
-        <span>Сегодня</span>
-      </div>
+      <StatusBadge status={service.status} />
     </div>
   );
 }
 
-function ServiceRow({ service, status }) {
-  const history = generateHistory(service.uptime);
-  const isOk = status === 'ok';
-  const uptimeColor = service.uptime >= 99.5 ? '#69db7c' : service.uptime >= 98 ? '#ffd43b' : '#ff6b6b';
-
+function StatCard({ value, label, sub }) {
   return (
-    <div className="status-service-row">
-      <div className="status-service-header">
-        <div>
-          <span className="status-service-name">{service.name}</span>
-          <span className="status-service-desc">{service.desc}</span>
-        </div>
-        <span className="status-service-uptime" style={{ color: uptimeColor }}>
-          {service.uptime}% uptime
-        </span>
-      </div>
-      <UptimeBar history={history} />
+    <div className="status-stat-card">
+      <span className="status-stat-val">{value}</span>
+      <span className="status-stat-label">{label}</span>
+      {sub && <span className="status-stat-sub">{sub}</span>}
     </div>
   );
 }
@@ -65,22 +62,35 @@ export default function Status() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [liveUptime, setLiveUptime] = useState(0);
 
   const load = async () => {
-    setLoading(true);
     try {
       const r = await fetch('/api/status');
       if (r.ok) {
-        setData(await r.json());
+        const d = await r.json();
+        setData(d);
+        setLiveUptime(d.uptime || 0);
         setLastUpdate(new Date());
       }
     } catch {}
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const refresh = setInterval(load, 30000);
+    return () => clearInterval(refresh);
+  }, []);
 
-  const allOk = data?.status === 'operational';
+  // Live uptime counter
+  useEffect(() => {
+    if (!liveUptime) return;
+    const id = setInterval(() => setLiveUptime(v => v + 1), 1000);
+    return () => clearInterval(id);
+  }, [data]);
+
+  const allOk = data?.services?.every(s => s.status === 'operational');
 
   return (
     <div className="status-page">
@@ -89,7 +99,8 @@ export default function Status() {
 
         <div className="status-top-label">SERVICE STATUS</div>
 
-        <div className="status-main-header">
+        {/* Main status banner */}
+        <div className={`status-main-banner ${allOk ? 'status-banner-ok' : 'status-banner-err'}`}>
           <div className="status-main-title-row">
             <span className={`status-dot ${allOk ? 'status-dot-ok' : 'status-dot-err'}`} />
             <h1 className="status-main-title">
@@ -101,31 +112,60 @@ export default function Status() {
           </span>
         </div>
 
+        {/* Stats */}
         {data && (
           <div className="status-stats-row">
-            <div className="status-stat">
-              <span className="status-stat-val">{data.onlineUsers}</span>
-              <span className="status-stat-label">онлайн</span>
-            </div>
-            <div className="status-stat">
-              <span className="status-stat-val">{data.totalUsers}</span>
-              <span className="status-stat-label">пользователей</span>
-            </div>
-            <div className="status-stat">
-              <span className="status-stat-val">{Math.floor(data.uptime / 3600)}ч</span>
-              <span className="status-stat-label">аптайм</span>
-            </div>
+            <StatCard
+              value={formatUptime(liveUptime)}
+              label="Аптайм сессии"
+              sub={`с ${formatDate(data.serverStart)}`}
+            />
+            <StatCard
+              value={data.onlineUsers}
+              label="онлайн сейчас"
+            />
+            <StatCard
+              value={data.totalUsers}
+              label="пользователей"
+            />
+            <StatCard
+              value={data.totalMessages}
+              label="сообщений"
+            />
           </div>
         )}
 
+        {/* Services */}
         <div className="status-services">
-          {SERVICES_CONFIG.map(s => (
-            <ServiceRow key={s.id} service={s} status="ok" />
+          <div className="status-section-title">Сервисы</div>
+          {(data?.services || [
+            { id: 'api', name: 'API сервер', status: loading ? 'operational' : 'operational' },
+            { id: 'ws', name: 'WebSocket', status: loading ? 'operational' : 'operational' },
+            { id: 'db', name: 'База данных', status: loading ? 'operational' : 'operational' },
+            { id: 'media', name: 'Медиа', status: loading ? 'operational' : 'operational' },
+          ]).map(s => (
+            <ServiceRow key={s.id} service={s} />
           ))}
         </div>
 
+        {/* Info */}
+        <div className="status-info-block">
+          <div className="status-info-row">
+            <span className="status-info-label">Последний запуск</span>
+            <span className="status-info-val">{data ? formatDate(data.serverStart) : '—'}</span>
+          </div>
+          <div className="status-info-row">
+            <span className="status-info-label">Время сервера</span>
+            <span className="status-info-val">{data ? formatDate(data.timestamp) : '—'}</span>
+          </div>
+          <div className="status-info-row">
+            <span className="status-info-label">Всего постов</span>
+            <span className="status-info-val">{data?.totalPosts ?? '—'}</span>
+          </div>
+        </div>
+
         <div className="status-footer-note">
-          Данные обновляются в реальном времени. История uptime за последние 90 дней.
+          Данные обновляются каждые 30 секунд. Аптайм считается с момента последнего запуска сервера.
         </div>
       </div>
     </div>
