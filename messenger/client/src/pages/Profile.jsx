@@ -468,7 +468,6 @@ export default function Profile({ user, onUpdate, onLogout }) {
             </button>
           </nav>
           <div className="sidebar-footer">
-            <a href="/status" className="sidebar-footer-link">Статус серверов</a>
             <a href="/terms" className="sidebar-footer-link">Условия использования</a>
             <a href="/privacy" className="sidebar-footer-link">Конфиденциальность</a>
             <a href="/cookies" className="sidebar-footer-link">Политика Cookies</a>
@@ -565,7 +564,6 @@ export default function Profile({ user, onUpdate, onLogout }) {
         </nav>
 
         <div className="sidebar-footer">
-          <a href="/status" className="sidebar-footer-link">Статус серверов</a>
           <a href="/terms" className="sidebar-footer-link">Условия использования</a>
           <a href="/privacy" className="sidebar-footer-link">Конфиденциальность</a>
           <a href="/cookies" className="sidebar-footer-link">Политика Cookies</a>

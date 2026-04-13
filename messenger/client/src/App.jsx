@@ -4,7 +4,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import SetupProfile from './pages/SetupProfile';
 import Profile from './pages/Profile';
-import Status from './pages/Status';
 import Cookies from './pages/Cookies';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
@@ -109,7 +108,6 @@ export default function App() {
       {TAB_ROUTES.map(tab => (
         <Route key={tab} path={`/${tab}`} element={profileEl} />
       ))}
-      <Route path="/status"  element={<Status />} />
       <Route path="/cookies" element={<Cookies />} />
       <Route path="/terms"   element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
