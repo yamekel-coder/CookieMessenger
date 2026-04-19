@@ -6,25 +6,7 @@ const { validateLengths, postLimiter } = require('../middleware/security');
 
 const router = express.Router();
 
-// ── Poll tables for channel posts ─────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS channel_poll_options (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    post_id INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    FOREIGN KEY (post_id) REFERENCES channel_posts(id) ON DELETE CASCADE
-  )
-`);
-db.exec(`
-  CREATE TABLE IF NOT EXISTS channel_poll_votes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    option_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    UNIQUE(option_id, user_id),
-    FOREIGN KEY (option_id) REFERENCES channel_poll_options(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  )
-`);
+
 
 function getChannel(id) {
   return db.prepare('SELECT * FROM channels WHERE id = ?').get(id);
@@ -219,33 +201,8 @@ router.get('/:id/posts', auth, (req, res) => {
     ORDER BY cp.created_at DESC LIMIT ? OFFSET ?
   `).all(req.user.id, channel.id, limit, offset);
 
-  // Attach poll data
-  const enriched = posts.map(post => {
-    if (post.media_type !== 'poll') return post;
-    try {
-      const options = db.prepare('SELECT * FROM channel_poll_options WHERE post_id = ?').all(post.id);
-      if (!options || options.length === 0) {
-        console.log('[channel posts] No poll options found for post', post.id);
-        return post;
-      }
-      
-      // Find user's vote by checking all options
-      const userVoteRecord = db.prepare(`
-        SELECT option_id FROM channel_poll_votes 
-        WHERE user_id = ? AND option_id IN (SELECT id FROM channel_poll_options WHERE post_id = ?)
-      `).get(req.user.id, post.id);
-      
-      const poll = options.map(o => ({
-        ...o,
-        votes: db.prepare('SELECT COUNT(*) as c FROM channel_poll_votes WHERE option_id = ?').get(o.id).c,
-        voted: userVoteRecord?.option_id === o.id,
-      }));
-      return { ...post, poll };
-    } catch (err) {
-      console.error('[channel posts poll]', err.message);
-      return post;
-    }
-  });
+  // No poll support for channels
+  const enriched = posts;
 
   const total = db.prepare('SELECT COUNT(*) as c FROM channel_posts WHERE channel_id = ?').get(channel.id).c;
   res.json({ posts: enriched, hasMore: offset + limit < total });
@@ -257,19 +214,9 @@ router.post('/:id/posts', auth, postLimiter, validateLengths({ content: 4000 }),
   if (!channel) return res.status(404).json({ error: 'Канал не найден' });
   if (channel.owner_id !== req.user.id) return res.status(403).json({ error: 'Только владелец может публиковать' });
 
-  const { content, media, media_type, spoiler, poll_options } = req.body;
+  const { content, media, media_type, spoiler } = req.body;
 
-  // Poll validation
-  if (media_type === 'poll') {
-    if (!Array.isArray(poll_options) || poll_options.length < 2)
-      return res.status(400).json({ error: 'Минимум 2 варианта' });
-    if (poll_options.length > 10)
-      return res.status(400).json({ error: 'Максимум 10 вариантов' });
-    if (poll_options.some(o => typeof o !== 'string' || !o.trim() || o.length > 200))
-      return res.status(400).json({ error: 'Вариант слишком длинный или пустой' });
-  } else {
-    if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустой пост' });
-  }
+  if (!content?.trim() && !media) return res.status(400).json({ error: 'Пустой пост' });
 
   const result = db.prepare(
     'INSERT INTO channel_posts (channel_id, author_id, content, media, media_type, spoiler) VALUES (?, ?, ?, ?, ?, ?)'
@@ -277,23 +224,11 @@ router.post('/:id/posts', auth, postLimiter, validateLengths({ content: 4000 }),
 
   const postId = result.lastInsertRowid;
 
-  // Insert poll options
-  if (media_type === 'poll' && poll_options) {
-    const ins = db.prepare('INSERT INTO channel_poll_options (post_id, text) VALUES (?, ?)');
-    poll_options.forEach(opt => ins.run(postId, opt.trim()));
-  }
-
   const post = db.prepare(`
     SELECT cp.*, u.username, u.display_name, u.avatar, u.accent_color, u.verified, u.animated_name,
       0 as reactions_count, NULL as my_reaction
     FROM channel_posts cp JOIN users u ON u.id = cp.author_id WHERE cp.id = ?
   `).get(postId);
-
-  // Attach poll
-  if (media_type === 'poll') {
-    const options = db.prepare('SELECT * FROM channel_poll_options WHERE post_id = ?').all(postId);
-    post.poll = options.map(o => ({ ...o, votes: 0, voted: false }));
-  }
 
   // Notify all subscribers in real-time
   const subs = db.prepare('SELECT user_id FROM channel_subscribers WHERE channel_id = ?').all(channel.id);
@@ -302,52 +237,6 @@ router.post('/:id/posts', auth, postLimiter, validateLengths({ content: 4000 }),
   });
 
   res.json(post);
-});
-
-// ── POST /api/channels/:id/posts/:postId/poll/:optionId — vote ───────────────
-router.post('/:id/posts/:postId/poll/:optionId', auth, (req, res) => {
-  try {
-    const optionId = parseInt(req.params.optionId);
-    const postId = parseInt(req.params.postId);
-    if (isNaN(optionId) || isNaN(postId)) return res.status(400).json({ error: 'Неверный ID' });
-
-    const option = db.prepare('SELECT * FROM channel_poll_options WHERE id = ? AND post_id = ?').get(optionId, postId);
-    if (!option) return res.status(404).json({ error: 'Вариант не найден' });
-
-    const existing = db.prepare(`
-      SELECT cpv.* FROM channel_poll_votes cpv
-      JOIN channel_poll_options cpo ON cpo.id = cpv.option_id
-      WHERE cpo.post_id = ? AND cpv.user_id = ?
-    `).get(postId, req.user.id);
-
-    if (existing) {
-      if (existing.option_id === optionId) {
-        db.prepare('DELETE FROM channel_poll_votes WHERE option_id = ? AND user_id = ?').run(optionId, req.user.id);
-      } else {
-        db.prepare('DELETE FROM channel_poll_votes WHERE option_id = ? AND user_id = ?').run(existing.option_id, req.user.id);
-        db.prepare('INSERT INTO channel_poll_votes (option_id, user_id) VALUES (?, ?)').run(optionId, req.user.id);
-      }
-    } else {
-      db.prepare('INSERT INTO channel_poll_votes (option_id, user_id) VALUES (?, ?)').run(optionId, req.user.id);
-    }
-
-    const options = db.prepare('SELECT * FROM channel_poll_options WHERE post_id = ?').all(postId);
-    const userVoteRecord = db.prepare(`
-      SELECT option_id FROM channel_poll_votes 
-      WHERE user_id = ? AND option_id IN (SELECT id FROM channel_poll_options WHERE post_id = ?)
-    `).get(req.user.id, postId);
-
-    const poll = options.map(o => ({
-      ...o,
-      votes: db.prepare('SELECT COUNT(*) as c FROM channel_poll_votes WHERE option_id = ?').get(o.id).c,
-      voted: userVoteRecord?.option_id === o.id,
-    }));
-
-    res.json(poll);
-  } catch (err) {
-    console.error('[channel poll vote]', err.message);
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // ── DELETE /api/channels/:id/posts/:postId ────────────────────────────────────

@@ -599,37 +599,6 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
             {post.media && post.media_type === 'video' && (
               <video src={post.media} controls className="ch-post-media" />
             )}
-            {post.media_type === 'poll' && post.poll && (
-              <div className="ch-poll">
-                {post.poll.map(opt => {
-                  const total = post.poll.reduce((s, o) => s + o.votes, 0);
-                  const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
-                  const hasVoted = post.poll.some(o => o.voted);
-                  return (
-                    <button key={opt.id}
-                      className={`ch-poll-opt ${opt.voted ? 'ch-poll-voted' : ''} ${hasVoted ? 'ch-poll-revealed' : ''}`}
-                      onClick={async () => {
-                        const res = await api(`/api/channels/${channel.id}/posts/${post.id}/poll/${opt.id}`, { method: 'POST' });
-                        if (res.ok) {
-                          const updated = await res.json();
-                          setPosts(prev => prev.map(p => p.id === post.id ? { ...p, poll: updated } : p));
-                        } else {
-                          const err = await res.json().catch(() => ({}));
-                          console.error('Poll vote error:', err.error);
-                        }
-                      }}
-                    >
-                      {hasVoted && <div className="ch-poll-bar" style={{ width: `${pct}%` }} />}
-                      <span className="ch-poll-text">{opt.text}</span>
-                      {hasVoted && <span className="ch-poll-pct">{pct}%</span>}
-                    </button>
-                  );
-                })}
-                <p className="ch-poll-total">
-                  {post.poll.reduce((s, o) => s + o.votes, 0)} голосов
-                </p>
-              </div>
-            )}
             <div className="ch-post-footer">
               <button className={`ch-react-btn ${post.my_reaction ? 'active' : ''}`} onClick={() => handleReact(post.id)}>
                 <Heart size={14} fill={post.my_reaction ? 'currentColor' : 'none'} />
