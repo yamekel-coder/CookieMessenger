@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Search, X, ArrowLeft, Send, Trash2, Users, Lock, Globe, Heart, Pencil, Eye, Image, Smile, Flag, Link2 } from 'lucide-react';
+import { Plus, Search, X, ArrowLeft, Send, Trash2, Users, Lock, Globe, Heart, Pencil, Eye, Image, Smile, Flag, Link2, BarChart2 } from 'lucide-react';
 import EmojiPicker from '../components/EmojiPicker';
 
 function api(path, opts = {}) {
@@ -269,6 +269,8 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
   const [spoiler, setSpoiler] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [showDesc, setShowDesc] = useState(false);
+  const [showPoll, setShowPoll] = useState(false);
+  const [pollOptions, setPollOptions] = useState(['', '']);
   const bottomRef = useRef();
   const fileRef = useRef();
   const pickerRef = useRef();
@@ -400,6 +402,20 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
   };
 
   const handlePost = async () => {
+    if (sending) return;
+    // Poll post
+    if (showPoll) {
+      const opts = pollOptions.filter(o => o.trim());
+      if (opts.length < 2) return;
+      setSending(true);
+      await api(`/api/channels/${channel.id}/posts`, {
+        method: 'POST',
+        body: JSON.stringify({ content: text.trim() || null, media_type: 'poll', poll_options: opts }),
+      });
+      setText(''); setPollOptions(['', '']); setShowPoll(false);
+      setSending(false);
+      return;
+    }
     if ((!text.trim() && !mediaPreview) || sending) return;
     setSending(true);
 
@@ -583,6 +599,35 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
             {post.media && post.media_type === 'video' && (
               <video src={post.media} controls className="ch-post-media" />
             )}
+            {post.media_type === 'poll' && post.poll && (
+              <div className="ch-poll">
+                {post.poll.map(opt => {
+                  const total = post.poll.reduce((s, o) => s + o.votes, 0);
+                  const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+                  const hasVoted = post.poll.some(o => o.voted);
+                  return (
+                    <button key={opt.id}
+                      className={`ch-poll-opt ${opt.voted ? 'ch-poll-voted' : ''} ${hasVoted ? 'ch-poll-revealed' : ''}`}
+                      onClick={async () => {
+                        if (hasVoted) return;
+                        const res = await api(`/api/channels/${channel.id}/posts/${post.id}/poll/${opt.id}`, { method: 'POST' });
+                        if (res.ok) {
+                          const updated = await res.json();
+                          setPosts(prev => prev.map(p => p.id === post.id ? { ...p, poll: updated } : p));
+                        }
+                      }}
+                    >
+                      {hasVoted && <div className="ch-poll-bar" style={{ width: `${pct}%` }} />}
+                      <span className="ch-poll-text">{opt.text}</span>
+                      {hasVoted && <span className="ch-poll-pct">{pct}%</span>}
+                    </button>
+                  );
+                })}
+                <p className="ch-poll-total">
+                  {post.poll.reduce((s, o) => s + o.votes, 0)} голосов
+                </p>
+              </div>
+            )}
             <div className="ch-post-footer">
               <button className={`ch-react-btn ${post.my_reaction ? 'active' : ''}`} onClick={() => handleReact(post.id)}>
                 <Heart size={14} fill={post.my_reaction ? 'currentColor' : 'none'} />
@@ -643,6 +688,11 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
             <button className="msg-media-btn" onClick={() => setShowPicker(v => !v)} title="Эмодзи/GIF" style={{ color: showPicker ? '#fff' : undefined }}>
               <Smile size={18} />
             </button>
+            <button className={`msg-media-btn ${showPoll ? 'active' : ''}`}
+              onClick={() => { setShowPoll(v => !v); setMediaPreview(null); }}
+              title="Опрос" style={{ color: showPoll ? '#a855f7' : undefined }}>
+              <BarChart2 size={18} />
+            </button>
             {mediaPreview && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: spoiler ? '#ffd43b' : '#555', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 <input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} style={{ cursor: 'pointer' }} />
@@ -651,16 +701,47 @@ function ChannelView({ channel: initialChannel, user, onBack }) {
             )}
             <input
               className="msg-input"
-              placeholder="Написать пост..."
+              placeholder={showPoll ? 'Вопрос (необязательно)...' : 'Написать пост...'}
               value={text}
               onChange={e => setText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && !showPoll && handlePost()}
               maxLength={4000}
             />
-            <button className="msg-send-btn" onClick={handlePost} disabled={(!text.trim() && !mediaPreview) || sending}>
+            <button className="msg-send-btn" onClick={handlePost}
+              disabled={showPoll ? pollOptions.filter(o => o.trim()).length < 2 || sending : (!text.trim() && !mediaPreview) || sending}>
               <Send size={16} />
             </button>
           </div>
+
+          {/* Poll options */}
+          {showPoll && (
+            <div style={{ padding: '0 1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {pollOptions.map((opt, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <input
+                    className="msg-input"
+                    placeholder={`Вариант ${i + 1}`}
+                    value={opt}
+                    onChange={e => setPollOptions(prev => prev.map((o, idx) => idx === i ? e.target.value : o))}
+                    maxLength={200}
+                    style={{ flex: 1 }}
+                  />
+                  {pollOptions.length > 2 && (
+                    <button onClick={() => setPollOptions(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 4 }}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 10 && (
+                <button onClick={() => setPollOptions(prev => [...prev, ''])}
+                  style={{ background: 'none', border: '1px dashed #333', borderRadius: 8, color: '#555', cursor: 'pointer', padding: '0.4rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+                  <Plus size={13} /> Добавить вариант
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

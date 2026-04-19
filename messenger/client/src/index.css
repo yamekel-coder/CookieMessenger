@@ -7485,3 +7485,41 @@ video {
   border: 1px solid #1e1e1e;
   border-radius: 20px;
 }
+
+/* ── Channel poll ──────────────────────────────────────────────────────────── */
+.ch-poll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+.ch-poll-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #222;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 0.88rem;
+  text-align: left;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.ch-poll-opt:hover:not(.ch-poll-revealed) { border-color: #444; }
+.ch-poll-voted { border-color: #a855f7 !important; color: #fff; }
+.ch-poll-revealed { cursor: default; }
+.ch-poll-bar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: rgba(168,85,247,0.15);
+  border-radius: 8px;
+  transition: width 0.5s ease;
+  pointer-events: none;
+}
+.ch-poll-text { position: relative; z-index: 1; }
+.ch-poll-pct { position: relative; z-index: 1; font-size: 0.78rem; color: #a855f7; font-weight: 600; }
+.ch-poll-total { font-size: 0.72rem; color: #444; margin: 0.2rem 0 0; }
