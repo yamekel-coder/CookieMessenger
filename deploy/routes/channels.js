@@ -224,18 +224,27 @@ router.get('/:id/posts', auth, (req, res) => {
     if (post.media_type !== 'poll') return post;
     try {
       const options = db.prepare('SELECT * FROM channel_poll_options WHERE post_id = ?').all(post.id);
-      const userVote = db.prepare(`
-        SELECT cpv.option_id FROM channel_poll_votes cpv
-        JOIN channel_poll_options cpo ON cpo.id = cpv.option_id
-        WHERE cpo.post_id = ? AND cpv.user_id = ?
-      `).get(post.id, req.user.id);
+      if (!options || options.length === 0) {
+        console.log('[channel posts] No poll options found for post', post.id);
+        return post;
+      }
+      
+      // Find user's vote by checking all options
+      const userVoteRecord = db.prepare(`
+        SELECT option_id FROM channel_poll_votes 
+        WHERE user_id = ? AND option_id IN (SELECT id FROM channel_poll_options WHERE post_id = ?)
+      `).get(req.user.id, post.id);
+      
       const poll = options.map(o => ({
         ...o,
         votes: db.prepare('SELECT COUNT(*) as c FROM channel_poll_votes WHERE option_id = ?').get(o.id).c,
-        voted: userVote?.option_id === o.id,
+        voted: userVoteRecord?.option_id === o.id,
       }));
       return { ...post, poll };
-    } catch { return post; }
+    } catch (err) {
+      console.error('[channel posts poll]', err.message);
+      return post;
+    }
   });
 
   const total = db.prepare('SELECT COUNT(*) as c FROM channel_posts WHERE channel_id = ?').get(channel.id).c;
@@ -323,16 +332,15 @@ router.post('/:id/posts/:postId/poll/:optionId', auth, (req, res) => {
     }
 
     const options = db.prepare('SELECT * FROM channel_poll_options WHERE post_id = ?').all(postId);
-    const userVote = db.prepare(`
-      SELECT cpv.option_id FROM channel_poll_votes cpv
-      JOIN channel_poll_options cpo ON cpo.id = cpv.option_id
-      WHERE cpo.post_id = ? AND cpv.user_id = ?
-    `).get(postId, req.user.id);
+    const userVoteRecord = db.prepare(`
+      SELECT option_id FROM channel_poll_votes 
+      WHERE user_id = ? AND option_id IN (SELECT id FROM channel_poll_options WHERE post_id = ?)
+    `).get(req.user.id, postId);
 
     const poll = options.map(o => ({
       ...o,
       votes: db.prepare('SELECT COUNT(*) as c FROM channel_poll_votes WHERE option_id = ?').get(o.id).c,
-      voted: userVote?.option_id === o.id,
+      voted: userVoteRecord?.option_id === o.id,
     }));
 
     res.json(poll);
