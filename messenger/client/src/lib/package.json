@@ -1,0 +1,46 @@
+{
+  "name": "@messenger/call-engine",
+  "version": "1.0.0",
+  "description": "Библиотека для управления WebRTC аудио/видео звонками",
+  "main": "CallEngine.js",
+  "module": "CallEngine.js",
+  "types": "CallEngine.d.ts",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "webrtc",
+    "video-call",
+    "audio-call",
+    "p2p",
+    "group-call",
+    "react",
+    "messenger"
+  ],
+  "author": "animesao",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/react-hooks": "^8.0.0",
+    "jest": "^29.0.0"
+  },
+  "files": [
+    "CallEngine.js",
+    "SignalingAdapter.js",
+    "README.md",
+    "EXAMPLES.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/messenger"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/messenger/issues"
+  },
+  "homepage": "https://github.com/your-org/messenger#readme"
+}
